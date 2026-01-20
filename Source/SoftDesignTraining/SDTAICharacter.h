@@ -26,13 +26,28 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void TickMove(float DeltaTime);
+	void TickMove(float DeltaTime, float SpeedScale);
+
+	bool ComputeWallAvoidance(float DeltaTime, FVector& InOutDesiredDir, float& OutSpeedScale) const;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")
 	float MaxSpeed = 600.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float Acceleration = 1200.f;
+
+	UPROPERTY(EditAnywhere, Category="AI|Wall Avoidance")
+	float WallTraceDistance = 120.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
+	float AvoidTurnRateDegPerSec = 180.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
+	float MinSpeedScaleNearWall = 0.25f;
+
+	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
+	bool bDrawWallDebug = true;
+
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 

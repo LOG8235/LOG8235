@@ -2,6 +2,8 @@
 
 
 #include "SDTAICharacter.h"
+#include "DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 ASDTAICharacter::ASDTAICharacter()
@@ -22,7 +24,9 @@ void ASDTAICharacter::BeginPlay()
 void ASDTAICharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-    TickMove(DeltaTime);
+    float SpeedScale = 1.f;
+    ComputeWallAvoidance(DeltaTime, DesiredDir, SpeedScale);
+    TickMove(DeltaTime, SpeedScale);
     UE_LOG(LogTemp, Warning, TEXT("Speed: %f"), CurrentVelocity.Size());
 }
 
@@ -33,23 +37,72 @@ void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 }
 
-void ASDTAICharacter::TickMove(float DeltaTime) {
+void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
+
+    DesiredDir.Z = 0.f;
     DesiredDir = DesiredDir.GetSafeNormal();
 
     CurrentVelocity += DesiredDir * Acceleration * DeltaTime;
 
-    const float Speed = CurrentVelocity.Size();
-    if (Speed > MaxSpeed)
+    const float AllowedMax = MaxSpeed * SpeedScale;
+    if (CurrentVelocity.Size() > AllowedMax)
     {
-        CurrentVelocity = CurrentVelocity.GetSafeNormal() * MaxSpeed;
+        CurrentVelocity = CurrentVelocity.GetSafeNormal() * AllowedMax;
     }
 
-    AddActorWorldOffset(CurrentVelocity * DeltaTime, true);
+    FHitResult MoveHit;
+    AddActorWorldOffset(CurrentVelocity * DeltaTime, true, &MoveHit);
+
+    if (MoveHit.bBlockingHit)
+    {
+        CurrentVelocity = FVector::VectorPlaneProject(CurrentVelocity, MoveHit.ImpactNormal);
+
+        AddActorWorldOffset(MoveHit.ImpactNormal * 2.0f, false);
+    }
 
     if (!CurrentVelocity.IsNearlyZero())
     {
-        const FRotator TargetRot = CurrentVelocity.ToOrientationRotator();
-        SetActorRotation(TargetRot);
+        const float Yaw = CurrentVelocity.ToOrientationRotator().Yaw;
+        SetActorRotation(FRotator(0.f, Yaw, 0.f));
     }
 }
+
+bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, float& OutSpeedScale) const
+{
+    OutSpeedScale = 1.f;
+
+    const FVector Start = GetActorLocation() + FVector(0, 0, 50.f);
+    const FVector Forward = InOutDir.GetSafeNormal();
+    const FVector End = Start + Forward * WallTraceDistance;
+
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    bool bHit = GetWorld()->LineTraceSingleByObjectType(
+        Hit,
+        Start,
+        End,
+        FCollisionObjectQueryParams(ECC_WorldStatic),
+        Params
+    );
+
+    if (bDrawWallDebug)
+    {
+        DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
+    }
+
+    if (!bHit)
+        return false;
+
+    OutSpeedScale = 0.5f;
+
+    const float TurnAngle = AvoidTurnRateDegPerSec * DeltaTime;
+    InOutDir = InOutDir.RotateAngleAxis(TurnAngle, FVector::UpVector);
+    InOutDir.Z = 0.f;
+    InOutDir.Normalize();
+
+    return true;
+}
+
 
