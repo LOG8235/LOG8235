@@ -27,7 +27,6 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void TickMove(float DeltaTime, float SpeedScale);
-
 	bool ComputeWallAvoidance(float DeltaTime, FVector& InOutDesiredDir, float& OutSpeedScale) const;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")
@@ -37,20 +36,16 @@ public:
 	float Acceleration = 1200.f;
 
 	UPROPERTY(EditAnywhere, Category="AI|Wall Avoidance")
-	float WallTraceDistance = 120.f;
+	float WallTraceDistance = 45.f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
-	float AvoidTurnRateDegPerSec = 180.f;
+	float AvoidTurnRateDegPerSec = 90.f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	float MinSpeedScaleNearWall = 0.25f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	bool bDrawWallDebug = true;
-
-	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
-	float WallProbRadius = 35.f;
-
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 

@@ -8,6 +8,7 @@
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "SDTUtils.h"
 
 // Sets default values
 ASDTAICharacter::ASDTAICharacter()
@@ -70,51 +71,48 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
 {
     OutSpeedScale = 1.f;
 
-    const FVector Start = GetActorLocation() + FVector(0, 0, 50.f);
+    const FVector Start = GetActorLocation() + FVector(0, 0, 0.f);
     const FVector Forward = InOutDir.GetSafeNormal();
     const FVector End = Start + Forward * WallTraceDistance;
 
-    FHitResult Hit;
+    FCollisionShape shape;
+
+    TArray<FHitResult> Hits;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
 
-    FCollisionObjectQueryParams ObjParams;
-    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
-    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+    FCollisionObjectQueryParams ObjectQueryParams;
+    ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjectQueryParams.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
 
-    bool bHit = GetWorld()->SweepSingleByObjectType(
-        Hit,
+    const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+    const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+  	shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
+
+    GetWorld()->SweepMultiByObjectType(
+        Hits,
         Start,
         End,
         FQuat::Identity,
-        ObjParams,
-        FCollisionShape::MakeSphere(WallProbRadius),
+        ObjectQueryParams,
+        shape,
         Params
     );
 
 
     if (bDrawWallDebug)
     {
-        DrawDebugCapsule(
-            GetWorld(),
-            (Start + End) * 0.5f,
-            (End - Start).Size() * 0.5f,
-            WallProbRadius,
-            FRotationMatrix::MakeFromZ((End - Start).GetSafeNormal()).ToQuat(),
-            bHit ? FColor::Red : FColor::Green,
-            false,
-            0.05f,
-            0,
-            2.f
-        );
+        DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, Hits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
     }
 
+    OutSpeedScale = MinSpeedScaleNearWall;
 
-    if (!bHit)
+    if (Hits.Num() == 0)
         return false;
 
-    OutSpeedScale = MinSpeedScaleNearWall;
+    OutSpeedScale = 0.2f;
 
     const float TurnAngle = AvoidTurnRateDegPerSec * DeltaTime;
     InOutDir = InOutDir.RotateAngleAxis(TurnAngle, FVector::UpVector);
