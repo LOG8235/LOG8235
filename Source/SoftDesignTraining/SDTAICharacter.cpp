@@ -4,6 +4,10 @@
 #include "SDTAICharacter.h"
 #include "DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
+#include "Engine/World.h"
+#include "Engine/EngineTypes.h"
+#include "Engine/OverlapResult.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 ASDTAICharacter::ASDTAICharacter()
@@ -30,13 +34,14 @@ void ASDTAICharacter::Tick(float DeltaTime)
     UE_LOG(LogTemp, Warning, TEXT("Speed: %f"), CurrentVelocity.Size());
 }
 
-// Called to bind functionality to input
 void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 }
 
+
+//Pour faire bouger les AI avec une vitesse maximale et une vitesse qui scale
 void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
 
     DesiredDir.Z = 0.f;
@@ -45,28 +50,22 @@ void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
     CurrentVelocity += DesiredDir * Acceleration * DeltaTime;
 
     const float AllowedMax = MaxSpeed * SpeedScale;
-    if (CurrentVelocity.Size() > AllowedMax)
+    if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
     {
-        CurrentVelocity = CurrentVelocity.GetSafeNormal() * AllowedMax;
+        MoveComp->MaxWalkSpeed = MaxSpeed * SpeedScale;
     }
 
-    FHitResult MoveHit;
-    AddActorWorldOffset(CurrentVelocity * DeltaTime, true, &MoveHit);
+    AddMovementInput(DesiredDir, 1.0f);
 
-    if (MoveHit.bBlockingHit)
+    if (!DesiredDir.IsNearlyZero())
     {
-        CurrentVelocity = FVector::VectorPlaneProject(CurrentVelocity, MoveHit.ImpactNormal);
-
-        AddActorWorldOffset(MoveHit.ImpactNormal * 2.0f, false);
-    }
-
-    if (!CurrentVelocity.IsNearlyZero())
-    {
-        const float Yaw = CurrentVelocity.ToOrientationRotator().Yaw;
+        const float Yaw = DesiredDir.ToOrientationRotator().Yaw;
         SetActorRotation(FRotator(0.f, Yaw, 0.f));
     }
 }
 
+
+//Pour faire un check pour voir si un mur est proche
 bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, float& OutSpeedScale) const
 {
     OutSpeedScale = 1.f;
@@ -79,23 +78,43 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
-    bool bHit = GetWorld()->LineTraceSingleByObjectType(
+
+    FCollisionObjectQueryParams ObjParams;
+    ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
+    ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+
+    bool bHit = GetWorld()->SweepSingleByObjectType(
         Hit,
         Start,
         End,
-        FCollisionObjectQueryParams(ECC_WorldStatic),
+        FQuat::Identity,
+        ObjParams,
+        FCollisionShape::MakeSphere(WallProbRadius),
         Params
     );
 
+
     if (bDrawWallDebug)
     {
-        DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
+        DrawDebugCapsule(
+            GetWorld(),
+            (Start + End) * 0.5f,
+            (End - Start).Size() * 0.5f,
+            WallProbRadius,
+            FRotationMatrix::MakeFromZ((End - Start).GetSafeNormal()).ToQuat(),
+            bHit ? FColor::Red : FColor::Green,
+            false,
+            0.05f,
+            0,
+            2.f
+        );
     }
+
 
     if (!bHit)
         return false;
 
-    OutSpeedScale = 0.5f;
+    OutSpeedScale = MinSpeedScaleNearWall;
 
     const float TurnAngle = AvoidTurnRateDegPerSec * DeltaTime;
     InOutDir = InOutDir.RotateAngleAxis(TurnAngle, FVector::UpVector);
@@ -104,5 +123,3 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
 
     return true;
 }
-
-

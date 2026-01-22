@@ -48,9 +48,11 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	bool bDrawWallDebug = true;
 
+	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
+	float WallProbRadius = 35.f;
+
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 
 	FVector DesiredDir = FVector::ForwardVector;
-
 };
