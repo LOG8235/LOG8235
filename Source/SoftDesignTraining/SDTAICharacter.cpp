@@ -81,7 +81,6 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
-
     FCollisionObjectQueryParams ObjectQueryParams;
     ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
 	ObjectQueryParams.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
@@ -106,7 +105,6 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
     {
         DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, Hits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
     }
-
     OutSpeedScale = MinSpeedScaleNearWall;
 
     if (Hits.Num() == 0)
