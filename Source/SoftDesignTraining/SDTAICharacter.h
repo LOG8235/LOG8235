@@ -55,6 +55,8 @@ public:
 
 	bool ComputePursuit(FVector& OutDesiredDir) const;
 	bool HasClearPathTo(const AActor* Target) const;
+	bool ComputeFlee(float DeltaTime, FVector& OutDesiredDir, float& OutSpeedScale) const;
+	bool IsDirectionFree(const FVector& Dir, float Distance) const;
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 

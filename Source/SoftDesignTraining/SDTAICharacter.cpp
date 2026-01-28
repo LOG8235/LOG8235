@@ -34,12 +34,19 @@ void ASDTAICharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
     float SpeedScale = 1.f;
     FVector NewDir = DesiredDir;
-    if (ComputePursuit(NewDir)) {
-        DesiredDir = NewDir;
+    if (SDTUtils::IsPlayerPoweredUp(GetWorld()))
+    {
+        if (ComputeFlee(DeltaTime, NewDir, SpeedScale))
+            DesiredDir = NewDir;
+    }
+    else
+    {
+        if (ComputePursuit(NewDir))
+            DesiredDir = NewDir;
+
     }
     ComputeWallAvoidance(DeltaTime, DesiredDir, SpeedScale);
     TickMove(DeltaTime, SpeedScale);
-    UE_LOG(LogTemp, Warning, TEXT("Speed: %f"), CurrentVelocity.Size());
 }
 
 void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -111,12 +118,11 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
     {
         DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, Hits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
     }
-    OutSpeedScale = MinSpeedScaleNearWall;
 
     if (Hits.Num() == 0)
         return false;
 
-    OutSpeedScale = 0.2f;
+    OutSpeedScale = MinSpeedScaleNearWall;
 
     const float TurnAngle = AvoidTurnRateDegPerSec * DeltaTime;
     InOutDir = InOutDir.RotateAngleAxis(TurnAngle, FVector::UpVector);
@@ -128,7 +134,6 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
 
 bool ASDTAICharacter::ComputePursuit(FVector& OutDesiredDir) const {
     if (SDTUtils::IsPlayerPoweredUp(GetWorld())) {
-        UE_LOG(LogTemp, Warning, TEXT("PLAYER IS POWERED UP!"));
         return false;
     }
 
@@ -156,7 +161,6 @@ bool ASDTAICharacter::ComputePursuit(FVector& OutDesiredDir) const {
     }
 
     if (!bAny) {
-        UE_LOG(LogTemp, Warning, TEXT("Nothing found!!!!"));
         return false;
     }
 
@@ -214,4 +218,81 @@ bool ASDTAICharacter::HasClearPathTo(const AActor* Target) const {
     }
 
     return !bHit;
+}
+
+bool ASDTAICharacter::ComputeFlee(float DeltaTime, FVector& OutDesiredDir, float& OutSpeedScale) const {
+    if (!SDTUtils::IsPlayerPoweredUp(GetWorld())) {
+        return false;
+    }
+
+    TArray<FOverlapResult> Overlaps;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    FCollisionObjectQueryParams Obj;
+    Obj.AddObjectTypesToQuery(COLLISION_PLAYER);
+
+    const FVector Center = GetActorLocation();
+    const FCollisionShape CollisionShape = FCollisionShape::MakeSphere(playerDetectionRadius);
+
+    const bool bAny = GetWorld()->OverlapMultiByObjectType(Overlaps, Center, FQuat::Identity, Obj, CollisionShape, Params);
+
+    if (bDrawPursuitDebug) {
+        DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Green : FColor::Red, false, 0.05f);
+    }
+
+    if (!bAny) {
+        return false;
+    }
+
+    const ASoftDesignTrainingMainCharacter* Player = nullptr;
+    for (const FOverlapResult& O : Overlaps) {
+        Player = Cast<ASoftDesignTrainingMainCharacter>(O.GetActor());
+        if (Player)
+            break;
+    }
+
+    if (!Player)
+        return false;
+
+    FVector Away = GetActorLocation() - Player->GetActorLocation();
+    Away.Z = 0.f;
+
+    if (!Away.Normalize())
+        return false;
+
+    OutDesiredDir = Away;
+
+    ComputeWallAvoidance(DeltaTime, OutDesiredDir, OutSpeedScale);
+    return true;
+}
+
+bool ASDTAICharacter::IsDirectionFree(const FVector& Dir, float Distance) const {
+    const FVector Start = GetActorLocation();
+    const FVector End = Start + Dir.GetSafeNormal() * Distance;
+
+    FCollisionShape shape;
+
+    TArray<FHitResult> Hits;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    FCollisionObjectQueryParams ObjectQueryParams;
+    ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
+    ObjectQueryParams.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
+
+    const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+    const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+    shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
+
+    return GetWorld()->SweepMultiByObjectType(
+        Hits,
+        Start,
+        End,
+        FQuat::Identity,
+        ObjectQueryParams,
+        shape,
+        Params
+    );
 }
