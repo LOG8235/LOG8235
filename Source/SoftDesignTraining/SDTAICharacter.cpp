@@ -159,45 +159,31 @@ bool ASDTAICharacter::ComputePursuit(FVector& OutDesiredDir) const {
         UE_LOG(LogTemp, Warning, TEXT("Nothing found!!!!"));
         return false;
     }
-    const AActor* BestTarget = nullptr;
-    float BestDistSq = TNumericLimits<float>::Max();
+
+    const ASoftDesignTrainingMainCharacter* Player = nullptr;
 
     for (const FOverlapResult& O : Overlaps)
     {
-        const AActor* A = O.GetActor();
-        if (!A) {
-            UE_LOG(LogTemp, Warning, TEXT("Actor NOT found"));
-            continue;
-        }
-        UE_LOG(LogTemp, Warning, TEXT("Actor found: %s"), *A->GetActorNameOrLabel());
-        const ASoftDesignTrainingMainCharacter* Player = Cast<ASoftDesignTrainingMainCharacter>(A);
-        if (!Player) {
-            UE_LOG(LogTemp, Warning, TEXT("Player NOT found!!!!"));
-            continue;
-        }
-        UE_LOG(LogTemp, Warning, TEXT("Player found: %s"), *Player->GetActorNameOrLabel());
-        UE_LOG(LogTemp, Warning, TEXT("Player Coordinates: %s"), *Player->GetActorLocation().ToString());
-
-        const float D2 = FVector::DistSquared(Center, Player->GetActorLocation());
-        if (D2 < BestDistSq)
-        {
-            BestDistSq = D2;
-            BestTarget = Player;
-        }
+        Player = Cast<ASoftDesignTrainingMainCharacter>(O.GetActor());
+        if (Player)
+            break;
     }
 
-    if (!BestTarget)
+    if (!Player)
         return false;
 
-    if (!HasClearPathTo(BestTarget))
+    if (!HasClearPathTo(Player))
         return false;
 
-    OutDesiredDir = (BestTarget->GetActorLocation() - Center);
-    UE_LOG(LogTemp, Warning, TEXT("Desired Dir: %s"), *OutDesiredDir.ToString());
-    OutDesiredDir.Z = 0.f;
-    OutDesiredDir = OutDesiredDir.GetSafeNormal();
+    FVector Dir = Player->GetActorLocation() - Center;
+    Dir.Z = 0.f;
 
-    return !OutDesiredDir.IsNearlyZero();
+    if (!Dir.Normalize())
+        return false;
+
+    OutDesiredDir = Dir;
+
+    return true;
 }
 
 bool ASDTAICharacter::HasClearPathTo(const AActor* Target) const {
