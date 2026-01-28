@@ -8,7 +8,10 @@
 #include "Engine/EngineTypes.h"
 #include "Engine/OverlapResult.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "SoftDesignTrainingMainCharacter.h"
 #include "SDTUtils.h"
+
 
 // Sets default values
 ASDTAICharacter::ASDTAICharacter()
@@ -30,6 +33,10 @@ void ASDTAICharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
     float SpeedScale = 1.f;
+    FVector NewDir = DesiredDir;
+    if (ComputePursuit(NewDir)) {
+        DesiredDir = NewDir;
+    }
     ComputeWallAvoidance(DeltaTime, DesiredDir, SpeedScale);
     TickMove(DeltaTime, SpeedScale);
     UE_LOG(LogTemp, Warning, TEXT("Speed: %f"), CurrentVelocity.Size());
@@ -38,7 +45,6 @@ void ASDTAICharacter::Tick(float DeltaTime)
 void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
 }
 
 
@@ -118,4 +124,108 @@ bool ASDTAICharacter::ComputeWallAvoidance(float DeltaTime, FVector& InOutDir, f
     InOutDir.Normalize();
 
     return true;
+}
+
+bool ASDTAICharacter::ComputePursuit(FVector& OutDesiredDir) const {
+    if (SDTUtils::IsPlayerPoweredUp(GetWorld())) {
+        UE_LOG(LogTemp, Warning, TEXT("PLAYER IS POWERED UP!"));
+        return false;
+    }
+
+    TArray<FOverlapResult> Overlaps;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    FCollisionObjectQueryParams Obj;
+    Obj.AddObjectTypesToQuery(COLLISION_PLAYER);
+    
+    const FVector Center = GetActorLocation();
+    const FCollisionShape Sphere = FCollisionShape::MakeSphere(playerDetectionRadius);
+
+    const bool bAny = GetWorld()->OverlapMultiByObjectType(
+        Overlaps,
+        Center,
+        FQuat::Identity,
+        Obj,
+        Sphere,
+        Params
+    );
+
+    if (bDrawPursuitDebug) {
+        DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Green : FColor::Red, false, 0.05f);
+    }
+
+    if (!bAny) {
+        UE_LOG(LogTemp, Warning, TEXT("Nothing found!!!!"));
+        return false;
+    }
+    const AActor* BestTarget = nullptr;
+    float BestDistSq = TNumericLimits<float>::Max();
+
+    for (const FOverlapResult& O : Overlaps)
+    {
+        const AActor* A = O.GetActor();
+        if (!A) {
+            UE_LOG(LogTemp, Warning, TEXT("Actor NOT found"));
+            continue;
+        }
+        UE_LOG(LogTemp, Warning, TEXT("Actor found: %s"), *A->GetActorNameOrLabel());
+        const ASoftDesignTrainingMainCharacter* Player = Cast<ASoftDesignTrainingMainCharacter>(A);
+        if (!Player) {
+            UE_LOG(LogTemp, Warning, TEXT("Player NOT found!!!!"));
+            continue;
+        }
+        UE_LOG(LogTemp, Warning, TEXT("Player found: %s"), *Player->GetActorNameOrLabel());
+        UE_LOG(LogTemp, Warning, TEXT("Player Coordinates: %s"), *Player->GetActorLocation().ToString());
+
+        const float D2 = FVector::DistSquared(Center, Player->GetActorLocation());
+        if (D2 < BestDistSq)
+        {
+            BestDistSq = D2;
+            BestTarget = Player;
+        }
+    }
+
+    if (!BestTarget)
+        return false;
+
+    if (!HasClearPathTo(BestTarget))
+        return false;
+
+    OutDesiredDir = (BestTarget->GetActorLocation() - Center);
+    UE_LOG(LogTemp, Warning, TEXT("Desired Dir: %s"), *OutDesiredDir.ToString());
+    OutDesiredDir.Z = 0.f;
+    OutDesiredDir = OutDesiredDir.GetSafeNormal();
+
+    return !OutDesiredDir.IsNearlyZero();
+}
+
+bool ASDTAICharacter::HasClearPathTo(const AActor* Target) const {
+    if (!Target) return false;
+
+    const FVector Start = GetActorLocation();
+    const FVector End = Target->GetActorLocation();
+
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+    Params.AddIgnoredActor(Target);
+
+    FCollisionObjectQueryParams Obj;
+    Obj.AddObjectTypesToQuery(ECC_WorldStatic);
+    Obj.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
+
+    const bool bHit = GetWorld()->LineTraceSingleByObjectType(
+        Hit,
+        Start,
+        End,
+        Obj,
+        Params
+    );
+
+    if (bDrawPursuitDebug) {
+        DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Red : FColor::Green, false, 5.f, 0, 2.f);
+    }
+
+    return !bHit;
 }

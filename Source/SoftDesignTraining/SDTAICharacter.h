@@ -47,6 +47,15 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	bool bDrawWallDebug = true;
 
+	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
+	float playerDetectionRadius = 700.f;
+
+	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
+	bool bDrawPursuitDebug = true;
+
+	bool ComputePursuit(FVector& OutDesiredDir) const;
+	bool HasClearPathTo(const AActor* Target) const;
+
 	FVector CurrentVelocity = FVector::ZeroVector;
 
 	FVector DesiredDir = FVector::ForwardVector;
