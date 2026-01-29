@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "SoftDesignTrainingMainCharacter.h"
 #include "SDTUtils.h"
+#include "SDTCollectible.h"
 
 
 // Sets default values
@@ -39,14 +40,21 @@ void ASDTAICharacter::Tick(float DeltaTime)
         if (ComputeFlee(DeltaTime, NewDir, SpeedScale))
             DesiredDir = NewDir;
     }
-    else
+    else if (ComputePursuit(NewDir))  
     {
-        if (ComputePursuit(NewDir))
+              
             DesiredDir = NewDir;
-
+        
     }
+    /*else if (DetectCollectible(NewDir))
+    {
+
+        DesiredDir = NewDir;
+
+    */
     ComputeWallAvoidance(DeltaTime, DesiredDir, SpeedScale);
     TickMove(DeltaTime, SpeedScale);
+
 }
 
 void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -295,4 +303,66 @@ bool ASDTAICharacter::IsDirectionFree(const FVector& Dir, float Distance) const 
         shape,
         Params
     );
+}
+bool ASDTAICharacter::DetectCollectible(FVector& OutDesiredDir) const {
+
+    TArray<FOverlapResult> Overlaps;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    FCollisionObjectQueryParams Obj;
+    Obj.AddObjectTypesToQuery(COLLISION_COLLECTIBLE);
+
+    const FVector Center = GetActorLocation() + (GetActorForwardVector() * playerDetectionRadius);
+    const FCollisionShape Sphere = FCollisionShape::MakeSphere(playerDetectionRadius);
+
+    const bool bAny = GetWorld()->OverlapMultiByObjectType(
+        Overlaps,
+        Center,
+        FQuat::Identity,
+        Obj,
+        Sphere,
+        Params
+    );
+
+    if (bDrawPursuitDebug) {
+        DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Blue : FColor::Orange, false, 0.05f);
+    }
+
+    if (!bAny) {
+        return false;
+    }
+
+    const ASDTCollectible* ClosestCollectible = nullptr;
+    float MinDistanceSq = FLT_MAX; 
+
+    for (const FOverlapResult& O : Overlaps)
+    {
+        const ASDTCollectible* CurrentCollectible = Cast<ASDTCollectible>(O.GetActor());
+
+        if (CurrentCollectible && HasClearPathTo(CurrentCollectible))
+        {
+            float DistSq = FVector::DistSquared(Center, CurrentCollectible->GetActorLocation());
+
+            
+            if (DistSq < MinDistanceSq)
+            {
+                MinDistanceSq = DistSq;
+                ClosestCollectible = CurrentCollectible;
+            }
+        }
+    }
+
+    if (!ClosestCollectible)
+        return false;
+
+    FVector Dir = ClosestCollectible->GetActorLocation() - Center;
+    Dir.Z = 0.f;
+
+    if (!Dir.Normalize())
+        return false;
+
+    OutDesiredDir = Dir;
+
+    return true;
 }

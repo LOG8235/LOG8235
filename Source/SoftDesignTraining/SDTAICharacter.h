@@ -53,7 +53,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
 	bool bDrawPursuitDebug = true;
 
+
 	bool ComputePursuit(FVector& OutDesiredDir) const;
+	bool DetectCollectible(FVector& OutDesiredDir) const;
 	bool HasClearPathTo(const AActor* Target) const;
 	bool ComputeFlee(float DeltaTime, FVector& OutDesiredDir, float& OutSpeedScale) const;
 	bool IsDirectionFree(const FVector& Dir, float Distance) const;
