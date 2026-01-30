@@ -39,14 +39,14 @@ void ASDTAICharacter::Tick(float DeltaTime)
     if (SDTUtils::IsPlayerPoweredUp(GetWorld()))
     {
         if (ComputeFlee(DeltaTime, NewDir, SpeedScale)) DesiredDir = NewDir;
-        if (ComputeObstacleAvoidance(DeltaTime, NewDir, SpeedScale, COLLISION_DEATH_OBJECT)) DesiredDir = NewDir;
-        else ComputeObstacleAvoidance(DeltaTime, DesiredDir, SpeedScale, ECC_WorldStatic);
     }
     else if (ComputePursuit(NewDir))
     {
         DesiredDir = NewDir;
-        ComputeObstacleAvoidance(DeltaTime, DesiredDir, TempScale, COLLISION_DEATH_OBJECT);
-        ComputeObstacleAvoidance(DeltaTime, DesiredDir, TempScale, ECC_WorldStatic);
+        ComputeObstacleAvoidance(DeltaTime, DesiredDir, TempScale);
+
+        TickMove(DeltaTime, SpeedScale);
+        return;
 
     }
     /*else if (DetectCollectible(NewDir))
@@ -55,12 +55,9 @@ void ASDTAICharacter::Tick(float DeltaTime)
         DesiredDir = NewDir;
 
     */
-    else {
-        if (ComputeObstacleAvoidance(DeltaTime, NewDir, SpeedScale, COLLISION_DEATH_OBJECT)) DesiredDir = NewDir;
-        else ComputeObstacleAvoidance(DeltaTime, DesiredDir, SpeedScale, ECC_WorldStatic);
-    }
-    TickMove(DeltaTime, SpeedScale);
+    if (ComputeObstacleAvoidance(DeltaTime, NewDir, SpeedScale)) DesiredDir = NewDir;
 
+    TickMove(DeltaTime, SpeedScale);
 }
 
 void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -93,7 +90,7 @@ void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
 }
 
 
-bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDir, float& OutSpeedScale, ECollisionChannel Obstacle) const
+bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDir, float& OutSpeedScale)
 {
     const FVector Start = GetActorLocation() + FVector(0, 0, 0.f);
     const FVector Forward = InOutDir.GetSafeNormal();
@@ -104,12 +101,15 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDi
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
 
+    FCollisionObjectQueryParams Obstacles;
+    Obstacles.AddObjectTypesToQuery(ECC_WorldStatic);
+    Obstacles.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
+
     const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
     const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-
     shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
 
-    GetWorld()->SweepMultiByObjectType(WallHits, Start, End, FQuat::Identity, Obstacle, shape, Params);
+    GetWorld()->SweepMultiByObjectType(WallHits, Start, End, FQuat::Identity, Obstacles, shape, Params);
 
     if (bDrawWallDebug) DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, WallHits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
 
@@ -121,17 +121,18 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDi
         MinHitDist = FMath::Min(MinHitDist, H.Distance);
     }
 
-    if (Obstacle == COLLISION_DEATH_OBJECT) OutSpeedScale = (MinHitDist < 30.f) ? MinSpeedScaleNearDeathFloor : MinSpeedScaleNearWall;
-    else OutSpeedScale = (MinHitDist < 100.f) ? MinSpeedScaleNearWall : OutSpeedScale;
+    OutSpeedScale = (MinHitDist < 70.f) ? MinSpeedScaleNearDeathFloor : OutSpeedScale;
 
     float TurnAngle = AvoidTurnRateDegPerSec * DeltaTime;
-    const FVector LeftTry = InOutDir.RotateAngleAxis(TurnAngle, FVector::UpVector).GetSafeNormal();
-    const FVector RightTry = InOutDir.RotateAngleAxis(-TurnAngle, FVector::UpVector).GetSafeNormal();
+
+    const float ProbeAngle = 40.f; 
+    const FVector LeftTry = InOutDir.RotateAngleAxis(ProbeAngle, FVector::UpVector).GetSafeNormal();
+    const FVector RightTry = InOutDir.RotateAngleAxis(-ProbeAngle, FVector::UpVector).GetSafeNormal();
 
     TArray<FHitResult> HitsLeft;
     TArray<FHitResult> HitsRight;
-    const FVector LeftEnd = Start + LeftTry * WallTraceDistance;
-    const FVector RightEnd = Start + RightTry * WallTraceDistance ;
+    const FVector LeftEnd = Start + LeftTry * WallTraceDistance * 0.6;
+    const FVector RightEnd = Start + RightTry * WallTraceDistance * 0.6;
 
     GetWorld()->SweepMultiByObjectType(HitsLeft, Start, LeftEnd, FQuat::Identity, ECC_WorldStatic, shape, Params);
     GetWorld()->SweepMultiByObjectType(HitsRight, Start, RightEnd, FQuat::Identity, ECC_WorldStatic, shape, Params);
@@ -142,26 +143,52 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDi
         DrawDebugCapsule(GetWorld(), RightEnd, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, HitsRight.Num() == 0 ? FColor::Green : FColor::Red, false, 0.05f, 0, 1.f);
     }
 
-	/* Ca marche pas vrm mais si on reussit a fix cest mieux
-    if (HitsLeft.Num() == 0)
+    bool bFrontBlocked = (WallHits.Num() > 0);
+    bool bLeftBlocked = (HitsLeft.Num() > 0);
+    bool bRightBlocked = (HitsRight.Num() > 0);
+
+    if (bFrontBlocked && bLeftBlocked && bRightBlocked && !bIsDoingUTurn)
+    {
+        bIsDoingUTurn = true;
+        UTurnDirection = -InOutDir;
+    }
+
+    if (bIsDoingUTurn)
+    {
+        // U turn marche pas avec 3 death floor jsp pq
+        float RotationStep = AvoidTurnRateDegPerSec * DeltaTime * 5.0f;
+        InOutDir = InOutDir.RotateAngleAxis(RotationStep, FVector::UpVector).GetSafeNormal();
+
+        OutSpeedScale = MinSpeedScaleNearDeathFloor;
+
+        TArray<FHitResult> ClearCheck;
+        GetWorld()->SweepMultiByObjectType(ClearCheck, Start, Start + InOutDir * WallTraceDistance, FQuat::Identity, Obstacles, shape, Params);
+
+        if (ClearCheck.Num() == 0)
+        {
+            bIsDoingUTurn = false;
+        }
+        return true;
+    }
+
+    if (HitsLeft.Num() == 0 && HitsRight.Num() > 0)
     {
         InOutDir = InOutDir.RotateAngleAxis(TurnAngle, FVector::UpVector).GetSafeNormal();
     }
-    else if (HitsRight.Num() == 0)
+    else if (HitsRight.Num() == 0 && HitsLeft.Num() > 0)
     {
         InOutDir = InOutDir.RotateAngleAxis(-TurnAngle, FVector::UpVector).GetSafeNormal();
     }
-    else
+    else if (HitsLeft.Num() > 0 && HitsRight.Num() > 0)
     {
-        InOutDir = RightTry;
-        OutSpeedScale *= 0.5f;
-    }*/
-
-    InOutDir = RightTry;
+        InOutDir = InOutDir.RotateAngleAxis(-TurnAngle, FVector::UpVector).GetSafeNormal();
+    }
+ 
     InOutDir.Z = 0.f;
     InOutDir.Normalize();
 
     return true;
+	
 }
 
 bool ASDTAICharacter::ComputePursuit(FVector& OutDesiredDir) const {
@@ -179,14 +206,7 @@ bool ASDTAICharacter::ComputePursuit(FVector& OutDesiredDir) const {
     const FVector Center = GetActorLocation();
     const FCollisionShape Sphere = FCollisionShape::MakeSphere(playerDetectionRadius);
 
-    const bool bAny = GetWorld()->OverlapMultiByObjectType(
-        Overlaps,
-        Center,
-        FQuat::Identity,
-        Obj,
-        Sphere,
-        Params
-    );
+    const bool bAny = GetWorld()->OverlapMultiByObjectType(Overlaps, Center, FQuat::Identity, Obj, Sphere, Params);
 
     if (bDrawPursuitDebug) {
         DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Green : FColor::Red, false, 0.05f);
@@ -237,13 +257,7 @@ bool ASDTAICharacter::HasClearPathTo(const AActor* Target) const {
     Obj.AddObjectTypesToQuery(ECC_WorldStatic);
     Obj.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
 
-    const bool bHit = GetWorld()->LineTraceSingleByObjectType(
-        Hit,
-        Start,
-        End,
-        Obj,
-        Params
-    );
+    const bool bHit = GetWorld()->LineTraceSingleByObjectType(Hit, Start, End, Obj, Params);
 
     if (bDrawPursuitDebug) {
         DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Red : FColor::Green, false, 5.f, 0, 2.f);
@@ -268,7 +282,7 @@ bool ASDTAICharacter::ComputeFlee(float DeltaTime, FVector& OutDesiredDir, float
 
     if (bDrawPursuitDebug) DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Green : FColor::Red, false, 0.05f);
 
-    if (GFrameCounter % 20 == 0) {
+    if (GFrameCounter % 25 == 0) {
         if (!bAny) return false;
 
         const ASoftDesignTrainingMainCharacter* Player = nullptr;
@@ -310,15 +324,7 @@ bool ASDTAICharacter::IsDirectionFree(const FVector& Dir, float Distance) const 
 
     shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
 
-    return GetWorld()->SweepMultiByObjectType(
-        Hits,
-        Start,
-        End,
-        FQuat::Identity,
-        ObjectQueryParams,
-        shape,
-        Params
-    );
+    return GetWorld()->SweepMultiByObjectType(Hits, Start, End, FQuat::Identity, ObjectQueryParams, shape, Params);
 }
 
 bool ASDTAICharacter::DetectCollectible(FVector& OutDesiredDir) const {
@@ -333,14 +339,7 @@ bool ASDTAICharacter::DetectCollectible(FVector& OutDesiredDir) const {
     const FVector Center = GetActorLocation() + (GetActorForwardVector() * playerDetectionRadius);
     const FCollisionShape Sphere = FCollisionShape::MakeSphere(playerDetectionRadius);
 
-    const bool bAny = GetWorld()->OverlapMultiByObjectType(
-        Overlaps,
-        Center,
-        FQuat::Identity,
-        Obj,
-        Sphere,
-        Params
-    );
+    const bool bAny = GetWorld()->OverlapMultiByObjectType(Overlaps, Center, FQuat::Identity, Obj, Sphere, Params);
 
     if (bDrawPursuitDebug) {
         DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Blue : FColor::Orange, false, 0.05f);

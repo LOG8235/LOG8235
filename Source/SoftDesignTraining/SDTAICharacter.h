@@ -27,7 +27,7 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void TickMove(float DeltaTime, float SpeedScale);
-	bool ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDesiredDir, float& OutSpeedScale, ECollisionChannel Obstacle) const;
+	bool ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDesiredDir, float& OutSpeedScale);
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")
 	float MaxSpeed = 600.f;
@@ -45,7 +45,7 @@ public:
 	float MinSpeedScaleNearWall = 0.25f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
-	float MinSpeedScaleNearDeathFloor = 0.f;
+	float MinSpeedScaleNearDeathFloor = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	bool bDrawWallDebug = true;
@@ -56,6 +56,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
 	bool bDrawPursuitDebug = true;
 
+	bool bIsDoingUTurn = false;
+	FVector UTurnDirection = FVector::ZeroVector;
 
 	bool ComputePursuit(FVector& OutDesiredDir) const;
 	bool DetectCollectible(FVector& OutDesiredDir) const;
@@ -66,4 +68,5 @@ public:
 	FVector CurrentVelocity = FVector::ZeroVector;
 
 	FVector DesiredDir = FVector::ForwardVector;
+
 };
