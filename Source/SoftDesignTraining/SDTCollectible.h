@@ -26,6 +26,12 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
         bool isMoveable = false;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
+    USoundBase* CollectSound;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
+    UParticleSystem* CollectEffect;
+
     virtual void Tick(float deltaTime) override;
     virtual void BeginPlay() override;
 

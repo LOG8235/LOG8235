@@ -19,51 +19,46 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
+public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	void TickMove(float DeltaTime, float SpeedScale);
-	bool ComputeObstacleAvoidance(float DeltaTime, FVector& InOutDesiredDir, float& OutSpeedScale);
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float MaxSpeed = 600.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float Acceleration = 1200.f;
 
-	UPROPERTY(EditAnywhere, Category="AI|Wall Avoidance")
-	float WallTraceDistance = 45.f;
+	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
+	float WallDetectionDistance = 300.f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	float AvoidTurnRateDegPerSec = 90.f;
-
-	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
-	float MinSpeedScaleNearWall = 0.25f;
-
-	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
-	float MinSpeedScaleNearDeathFloor = 0.0f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	bool bDrawWallDebug = true;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
 	float playerDetectionRadius = 700.f;
+	UPROPERTY(EditAnywhere, Category = "AI|Collectible Chase")
+	float collectibleDetectionRadius = 350.f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
 	bool bDrawPursuitDebug = true;
 
 	bool bIsDoingUTurn = false;
 	FVector UTurnDirection = FVector::ZeroVector;
-
-	bool ComputePursuit(FVector& OutDesiredDir) const;
-	bool DetectCollectible(FVector& OutDesiredDir) const;
+	void TickMove(float DeltaTime, float SpeedScale);
+	bool ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedScale);
+	bool ComputePursuit();
+	bool DetectCollectible();
 	bool HasClearPathTo(const AActor* Target) const;
-	bool ComputeFlee(float DeltaTime, FVector& OutDesiredDir, float& OutSpeedScale) const;
-	bool IsDirectionFree(const FVector& Dir, float Distance) const;
+	bool ComputeFlee(float DeltaTime, float& OutSpeedScale);
+	bool IsDirectionFree(float Distance) const;
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 

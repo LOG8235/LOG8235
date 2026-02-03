@@ -15,6 +15,15 @@ void ASDTCollectible::BeginPlay()
 
 void ASDTCollectible::Collect()
 {
+    if (CollectSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, CollectSound, GetActorLocation());
+    }
+
+    if (CollectEffect)
+    {
+        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CollectEffect, GetActorLocation());
+    }
     GetWorld()->GetTimerManager().SetTimer(m_CollectCooldownTimer, this, &ASDTCollectible::OnCooldownDone, m_CollectCooldownDuration, false);
 
     GetStaticMeshComponent()->SetVisibility(false);
