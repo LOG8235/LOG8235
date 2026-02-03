@@ -50,6 +50,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
 	bool bDrawPursuitDebug = true;
 
+	UPROPERTY(EditAnywhere, Category = "AI|Collectible Chase")
+	bool bDrawCollectibleDebug = true;
+
 	bool bIsDoingUTurn = false;
 	FVector UTurnDirection = FVector::ZeroVector;
 	void TickMove(float DeltaTime, float SpeedScale);
@@ -58,7 +61,6 @@ public:
 	bool DetectCollectible();
 	bool HasClearPathTo(const AActor* Target) const;
 	bool ComputeFlee(float DeltaTime, float& OutSpeedScale);
-	bool IsDirectionFree(float Distance) const;
 
 	FVector CurrentVelocity = FVector::ZeroVector;
 

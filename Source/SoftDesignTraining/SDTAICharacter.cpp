@@ -272,27 +272,6 @@ bool ASDTAICharacter::ComputeFlee(float DeltaTime, float& OutSpeedScale)  {
 	else return false;
 }
 
-bool ASDTAICharacter::IsDirectionFree( float Distance) const {
-    const FVector Start = GetActorLocation();
-    const FVector End = Start + DesiredDir.GetSafeNormal() * Distance;
-
-    FCollisionShape shape;
-
-    TArray<FHitResult> Hits;
-    FCollisionQueryParams Params;
-    Params.AddIgnoredActor(this);
-
-    FCollisionObjectQueryParams ObjectQueryParams;
-    ObjectQueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-    ObjectQueryParams.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
-
-    const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
-    const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-
-    shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
-
-    return GetWorld()->SweepMultiByObjectType(Hits, Start, End, FQuat::Identity, ObjectQueryParams, shape, Params);
-}
 
 bool ASDTAICharacter::DetectCollectible() {
 
@@ -308,7 +287,7 @@ bool ASDTAICharacter::DetectCollectible() {
 
     const bool hit = GetWorld()->OverlapMultiByObjectType(Overlaps, Center, FQuat::Identity, Obj, Sphere, Params);
    
-    
+    if(bDrawCollectibleDebug)
         DrawDebugSphere(GetWorld(), Center, collectibleDetectionRadius, 20, hit ? FColor::Blue : FColor::Orange, false, 0.05f);
 
 

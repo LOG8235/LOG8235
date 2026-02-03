@@ -15,12 +15,12 @@ void ASDTCollectible::BeginPlay()
 
 void ASDTCollectible::Collect()
 {
-    if (CollectSound)
+    if (CollectSound && GetStaticMeshComponent()->IsVisible())
     {
         UGameplayStatics::PlaySoundAtLocation(this, CollectSound, GetActorLocation());
     }
 
-    if (CollectEffect)
+    if (CollectEffect && GetStaticMeshComponent()->IsVisible())
     {
         UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), CollectEffect, GetActorLocation());
     }
