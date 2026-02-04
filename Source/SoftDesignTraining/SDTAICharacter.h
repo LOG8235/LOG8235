@@ -59,7 +59,7 @@ public:
 	bool ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedScale);
 	bool ComputePursuit();
 	bool DetectCollectible();
-	bool HasClearPathTo(const AActor* Target) const;
+	bool HasClearPathTo(FVector End) const;
 	bool ComputeFlee(float DeltaTime, float& OutSpeedScale);
 
 	FVector CurrentVelocity = FVector::ZeroVector;

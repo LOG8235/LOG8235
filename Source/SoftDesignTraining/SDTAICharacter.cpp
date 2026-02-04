@@ -36,18 +36,12 @@ void ASDTAICharacter::Tick(float DeltaTime)
     float SpeedScale = 1.f;
     float TempScale = 1.f;
     if (ComputeFlee(DeltaTime, SpeedScale))
-    {
-    }
+    {}
     else if (ComputePursuit())
-    {
-       
-
-    }
+    {}
     else if (DetectCollectible())
-    {
-    }
-    else {
-    ComputeObstacleAvoidance(DeltaTime, SpeedScale);
+    {}
+    else {ComputeObstacleAvoidance(DeltaTime, SpeedScale);
     }
     TickMove(DeltaTime, SpeedScale);
 }
@@ -60,11 +54,9 @@ void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 //Pour faire bouger les AI avec une vitesse maximale et une vitesse qui scale
 void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
-
     DesiredDir.Z = 0.f;
     DesiredDir = DesiredDir.GetSafeNormal();
-
-    CurrentVelocity += DesiredDir * Acceleration * DeltaTime;
+    //CurrentVelocity += DesiredDir * Acceleration * DeltaTime;
 
     const float AllowedMax = MaxSpeed * SpeedScale;
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
@@ -107,13 +99,27 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
 
     if (WallHits.Num() == 0) return false;
 
+    ECollisionChannel objectType = ECC_WorldStatic;
     float MinHitDist = FLT_MAX;
     for (const FHitResult& H : WallHits)
     {
         MinHitDist = FMath::Min(MinHitDist, H.Distance);
+		objectType = H.GetComponent()->GetCollisionObjectType();
     }
-	float speedScale = (MinHitDist + 0.01f) / WallDetectionDistance;
-    OutSpeedScale = speedScale / WallDetectionDistance < 0.1f ? 0.1f : speedScale;
+	/*float speedScale = (MinHitDist + 0.01f) / WallDetectionDistance;
+    OutSpeedScale = speedScale / WallDetectionDistance < 0.1f ? 0.1f : speedScale;*/
+    float MinSpeedScale = 0.2f;
+    float DistanceRatio = FMath::Clamp(MinHitDist / WallDetectionDistance, MinSpeedScale, 1.0f);
+
+
+    if (objectType == COLLISION_DEATH_OBJECT)
+    {
+        OutSpeedScale = (DistanceRatio <= MinSpeedScale) ? 0.0f : DistanceRatio;
+    }
+    else
+    {
+        OutSpeedScale = DistanceRatio;
+    }
    
 
     const float ProbeAngle = 90.f; 
@@ -130,15 +136,13 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
 
     if (bDrawWallDebug)
     {
-        DrawDebugCapsule(GetWorld(), LeftEnd, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, HitsLeft.Num() == 0 ? FColor::Green : FColor::Red, false, 0.05f, 0, 1.f);
-        DrawDebugCapsule(GetWorld(), RightEnd, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, HitsRight.Num() == 0 ? FColor::Green : FColor::Red, false, 0.05f, 0, 1.f);
+        DrawDebugCapsule(GetWorld(), LeftEnd, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, HitsLeft.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 1.f);
+        DrawDebugCapsule(GetWorld(), RightEnd, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, HitsRight.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 1.f);
     }
 
     bool bLeftBlocked = (HitsLeft.Num() > 0);
     bool bRightBlocked = (HitsRight.Num() > 0);
 
-   
-    
     if (!bLeftBlocked && bRightBlocked)
     {
 		AvoidTurnRateDegPerSec = FMath::Abs(AvoidTurnRateDegPerSec);
@@ -195,7 +199,7 @@ bool ASDTAICharacter::ComputePursuit()  {
     if (!Player) 
         return false;
 
-    if (!HasClearPathTo(Player))
+    if (!HasClearPathTo(Player->GetActorLocation()))
         return false;
 
     FVector Dir = Player->GetActorLocation() - Center;
@@ -209,28 +213,29 @@ bool ASDTAICharacter::ComputePursuit()  {
     return true;
 }
 
-bool ASDTAICharacter::HasClearPathTo(const AActor* Target) const {
-    if (!Target) return false;
+bool ASDTAICharacter::HasClearPathTo(FVector End) const {
 
     const FVector Start = GetActorLocation();
-    const FVector End = Target->GetActorLocation();
 
-    FHitResult Hit;
+
+    FCollisionShape shape;
+    TArray<FHitResult> WallHits;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
-    Params.AddIgnoredActor(Target);
 
-    FCollisionObjectQueryParams Obj;
-    Obj.AddObjectTypesToQuery(ECC_WorldStatic);
-    Obj.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
+    FCollisionObjectQueryParams Obstacles;
+    Obstacles.AddObjectTypesToQuery(ECC_WorldStatic);
+    Obstacles.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
 
-    const bool bHit = GetWorld()->LineTraceSingleByObjectType(Hit, Start, End, Obj, Params);
+    const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
+    const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+    shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
 
-    if (bDrawPursuitDebug) {
-        DrawDebugLine(GetWorld(), Start, End, bHit ? FColor::Red : FColor::Green, false, 5.f, 0, 2.f);
-    }
+    GetWorld()->SweepMultiByObjectType(WallHits, Start, End, FQuat::Identity, Obstacles, shape, Params);
 
-    return !bHit;
+    if (bDrawWallDebug) DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, WallHits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
+
+    return WallHits.IsEmpty();
 }
 
 bool ASDTAICharacter::ComputeFlee(float DeltaTime, float& OutSpeedScale)  {
@@ -249,27 +254,34 @@ bool ASDTAICharacter::ComputeFlee(float DeltaTime, float& OutSpeedScale)  {
 
     if (bDrawPursuitDebug) DrawDebugSphere(GetWorld(), Center, playerDetectionRadius, 20, bAny ? FColor::Green : FColor::Red, false, 0.05f);
 
-    if (GFrameCounter % 25 == 0) {
-        if (!bAny) return false;
+    if (!bAny) return false;
 
-        const ASoftDesignTrainingMainCharacter* Player = nullptr;
-        for (const FOverlapResult& O : Overlaps) {
-            Player = Cast<ASoftDesignTrainingMainCharacter>(O.GetActor());
-            if (Player) break;
-        }
+    const ASoftDesignTrainingMainCharacter* Player = nullptr;
+    for (const FOverlapResult& O : Overlaps) {
+        Player = Cast<ASoftDesignTrainingMainCharacter>(O.GetActor());
+        if (Player) break;
+    }
 
-        if (!Player) return false;
+    if (!Player) return false;
 
-        FVector Away = GetActorLocation() - Player->GetActorLocation();
-        Away.Z = 0.f;
+    FVector Away = GetActorLocation() - Player->GetActorLocation();
+    Away.Z = 0.f;
 
-        if (!Away.Normalize()) return false;
+    if (!Away.Normalize()) return false;
+       
+    float Alpha = 10.f* DeltaTime;
 
-        DesiredDir = Away;
+    if ((GetActorLocation() - Player->GetActorLocation()).SizeSquared() < FMath::Square(playerDetectionRadius * 0.25f)) {
+		DesiredDir = Away.GetSafeNormal();
+	}else {
+        DesiredDir = FMath::Lerp(DesiredDir, Away, Alpha).GetSafeNormal();
+    }
 
-        return true;
-	}
-	else return false;
+    /*OutSpeedScale = 1.0f;*/
+    ComputeObstacleAvoidance(DeltaTime, OutSpeedScale);
+
+    return true;
+	
 }
 
 
@@ -302,7 +314,7 @@ bool ASDTAICharacter::DetectCollectible() {
     {
         const ASDTCollectible* CurrentCollectible = Cast<ASDTCollectible>(O.GetActor());
 
-        if (CurrentCollectible->GetStaticMeshComponent()->IsVisible() && HasClearPathTo(CurrentCollectible))
+        if (CurrentCollectible->GetStaticMeshComponent()->IsVisible() && HasClearPathTo(CurrentCollectible->GetActorLocation()))
         {
             float DistSq = FVector::DistSquared(GetActorLocation(), CurrentCollectible->GetActorLocation());
 
