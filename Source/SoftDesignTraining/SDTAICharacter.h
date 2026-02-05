@@ -39,8 +39,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
 	float AvoidTurnRateDegPerSec = 90.f;
 
+
 	UPROPERTY(EditAnywhere, Category = "AI|Wall Avoidance")
-	bool bDrawWallDebug = true;
+	bool bDrawWallDebug = false;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
 	float playerDetectionRadius = 700.f;
@@ -48,12 +49,12 @@ public:
 	float collectibleDetectionRadius = 350.f;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Player Chase")
-	bool bDrawPursuitDebug = true;
+	bool bDrawPursuitDebug = false;
 
 	UPROPERTY(EditAnywhere, Category = "AI|Collectible Chase")
-	bool bDrawCollectibleDebug = true;
+	bool bDrawCollectibleDebug = false;
 
-	bool bIsDoingUTurn = false;
+	bool ChangeDirection = false;
 	FVector UTurnDirection = FVector::ZeroVector;
 	void TickMove(float DeltaTime, float SpeedScale);
 	bool ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedScale);

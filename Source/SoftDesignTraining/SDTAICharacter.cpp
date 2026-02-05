@@ -34,14 +34,19 @@ void ASDTAICharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     float SpeedScale = 1.f;
-    float TempScale = 1.f;
+    if(GFrameCounter % 350 == 0)
+	    ChangeDirection = true;
     if (ComputeFlee(DeltaTime, SpeedScale))
-    {}
+    {
+    }
     else if (ComputePursuit())
-    {}
+    {
+    }
     else if (DetectCollectible())
-    {}
-    else {ComputeObstacleAvoidance(DeltaTime, SpeedScale);
+    {
+    }
+    else {
+        ComputeObstacleAvoidance(DeltaTime, SpeedScale);
     }
     TickMove(DeltaTime, SpeedScale);
 }
@@ -97,17 +102,24 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
 
     if (bDrawWallDebug) DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, WallHits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
 
-    if (WallHits.Num() == 0) return false;
+    if (WallHits.Num() == 0) {
+        if (ChangeDirection) {
+            ChangeDirection = false;
+            AvoidTurnRateDegPerSec = -AvoidTurnRateDegPerSec;
+        }
+        return false;
+    }
 
     ECollisionChannel objectType = ECC_WorldStatic;
     float MinHitDist = FLT_MAX;
     for (const FHitResult& H : WallHits)
     {
-        MinHitDist = FMath::Min(MinHitDist, H.Distance);
-		objectType = H.GetComponent()->GetCollisionObjectType();
+        if (H.Distance < MinHitDist) {
+			MinHitDist = H.Distance;
+		    objectType = H.GetComponent()->GetCollisionObjectType();
+        }
     }
-	/*float speedScale = (MinHitDist + 0.01f) / WallDetectionDistance;
-    OutSpeedScale = speedScale / WallDetectionDistance < 0.1f ? 0.1f : speedScale;*/
+
     float MinSpeedScale = 0.2f;
     float DistanceRatio = FMath::Clamp(MinHitDist / WallDetectionDistance, MinSpeedScale, 1.0f);
 
@@ -121,7 +133,6 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
         OutSpeedScale = DistanceRatio;
     }
    
-
     const float ProbeAngle = 90.f; 
     const FVector LeftDir = DesiredDir.RotateAngleAxis(ProbeAngle, FVector::UpVector).GetSafeNormal();
     const FVector RightDir = DesiredDir.RotateAngleAxis(-ProbeAngle, FVector::UpVector).GetSafeNormal();
@@ -277,7 +288,6 @@ bool ASDTAICharacter::ComputeFlee(float DeltaTime, float& OutSpeedScale)  {
         DesiredDir = FMath::Lerp(DesiredDir, Away, Alpha).GetSafeNormal();
     }
 
-    /*OutSpeedScale = 1.0f;*/
     ComputeObstacleAvoidance(DeltaTime, OutSpeedScale);
 
     return true;
