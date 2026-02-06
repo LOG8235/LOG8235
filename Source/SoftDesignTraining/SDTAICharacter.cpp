@@ -120,19 +120,20 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
         }
     }
 
+    TArray<FOverlapResult> Overlaps;
+    Params.AddIgnoredActor(this);
+
+    FVector Center = GetActorLocation();
+    Center.Z -= (CapsuleHalfHeight / 2.f);
+    const FCollisionShape Sphere = FCollisionShape::MakeSphere(collectibleDetectionRadius * 0.2f);
+
+    const bool closeToDeathFloor = GetWorld()->OverlapMultiByObjectType(Overlaps, Center, FQuat::Identity, COLLISION_DEATH_OBJECT, Sphere, Params);
+
+    DrawDebugSphere(GetWorld(), Center, collectibleDetectionRadius * 0.2f, 20, closeToDeathFloor ? FColor::Orange : FColor::Orange, false, 0.05f);
+
     float MinSpeedScale = 0.2f;
-    float DistanceRatio = FMath::Clamp(MinHitDist / WallDetectionDistance, MinSpeedScale, 1.0f);
-
-
-    if (objectType == COLLISION_DEATH_OBJECT)
-    {
-        OutSpeedScale = (DistanceRatio <= MinSpeedScale) ? 0.0f : DistanceRatio;
-    }
-    else
-    {
-        OutSpeedScale = DistanceRatio;
-    }
-   
+    OutSpeedScale = closeToDeathFloor ? 0.0f : FMath::Clamp(MinHitDist / WallDetectionDistance, MinSpeedScale, 1.0f);
+  
     const float ProbeAngle = 90.f; 
     const FVector LeftDir = DesiredDir.RotateAngleAxis(ProbeAngle, FVector::UpVector).GetSafeNormal();
     const FVector RightDir = DesiredDir.RotateAngleAxis(-ProbeAngle, FVector::UpVector).GetSafeNormal();
