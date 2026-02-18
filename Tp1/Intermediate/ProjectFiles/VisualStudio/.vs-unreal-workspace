@@ -1,0 +1,19 @@
+{
+  "targets": {
+    "SoftDesignTrainingEditor": {
+      "targetType": "Editor",
+      "targetPath": "C:\\Ecole\\Log\\Log8235\\Tp1\\LOG8235\\Source\\SoftDesignTrainingEditor.Target.cs",
+      "projectPath": "C:\\Ecole\\Log\\Log8235\\Tp1\\LOG8235\\SoftDesignTraining.uproject",
+      "configurations": [
+        "Development"
+      ],
+      "platforms": [
+        "Win64"
+      ],
+      "architectures": [],
+      "configurationsAndPlatforms": [
+        "Development-Win64"
+      ]
+    }
+  }
+}
