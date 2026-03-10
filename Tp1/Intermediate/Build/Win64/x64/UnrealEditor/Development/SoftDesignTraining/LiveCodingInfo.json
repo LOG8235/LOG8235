@@ -1,0 +1,15 @@
+{
+	"RemapUnityFiles": 
+	{
+		"Module.SoftDesignTraining.gen.cpp.obj": [
+			"SDTAICharacter.gen.cpp.obj",
+			"SDTAIController.gen.cpp.obj",
+			"SDTCollectible.gen.cpp.obj",
+			"SoftDesignTraining.init.gen.cpp.obj",
+			"SoftDesignTrainingCharacter.gen.cpp.obj",
+			"SoftDesignTrainingGameMode.gen.cpp.obj",
+			"SoftDesignTrainingMainCharacter.gen.cpp.obj",
+			"SoftDesignTrainingPlayerController.gen.cpp.obj"
+		]
+	}
+}
