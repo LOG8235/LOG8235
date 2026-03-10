@@ -34,8 +34,12 @@ void ASDTAICharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     float SpeedScale = 1.f;
+
+    // Boolean pour rendre les mouvements plus aléatoires et empêcher l'agent de tourner en rond
     if(GFrameCounter % 350 == 0)
 	    ChangeDirection = true;
+
+    // Ordre de priorité
     if (ComputeFlee(DeltaTime, SpeedScale))
     {
     }
@@ -56,12 +60,9 @@ void ASDTAICharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
-
-//Pour faire bouger les AI avec une vitesse maximale et une vitesse qui scale
 void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
     DesiredDir.Z = 0.f;
     DesiredDir = DesiredDir.GetSafeNormal();
-    //CurrentVelocity += DesiredDir * Acceleration * DeltaTime;
 
     const float AllowedMax = MaxSpeed * SpeedScale;
     if (UCharacterMovementComponent* MoveComp = GetCharacterMovement())
@@ -78,14 +79,12 @@ void ASDTAICharacter::TickMove(float DeltaTime, float SpeedScale) {
     }
 }
 
-
 bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedScale)
 {
     const FVector Start = GetActorLocation() + FVector(0, 0, 0.f);
     const FVector Forward = DesiredDir.GetSafeNormal();
     const FVector End = Start + Forward * WallDetectionDistance;
 
-    FCollisionShape shape;
     TArray<FHitResult> WallHits;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
@@ -94,6 +93,7 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
     Obstacles.AddObjectTypesToQuery(ECC_WorldStatic);
     Obstacles.AddObjectTypesToQuery(COLLISION_DEATH_OBJECT);
 
+    FCollisionShape shape;
     const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
     const float CapsuleHalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
     shape.SetCapsule(CapsuleRadius, CapsuleHalfHeight);
@@ -102,6 +102,7 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
 
     if (bDrawWallDebug) DrawDebugCapsule(GetWorld(), End, CapsuleHalfHeight, CapsuleRadius, FQuat::Identity, WallHits.Num() == 0 ? FColor::Red : FColor::Green, false, 0.05f, 0, 2.f);
 
+    // Boolean pour rendre les mouvements plus aléatoires et empêcher l'agent de tourner en rond
     if (WallHits.Num() == 0) {
         if (ChangeDirection) {
             ChangeDirection = false;
@@ -110,6 +111,7 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
         return false;
     }
 
+	// Trouver la collision la plus proche et son type pour ajuster la vitesse en conséquence
     ECollisionChannel objectType = ECC_WorldStatic;
     float MinHitDist = FLT_MAX;
     for (const FHitResult& H : WallHits)
@@ -127,13 +129,15 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
     Center.Z -= (CapsuleHalfHeight / 2.f);
     const FCollisionShape Sphere = FCollisionShape::MakeSphere(collectibleDetectionRadius * 0.2f);
 
+	// Boolean pour empêcher l'agent de se suicider sur les DeathFloor
     const bool closeToDeathFloor = GetWorld()->OverlapMultiByObjectType(Overlaps, Center, FQuat::Identity, COLLISION_DEATH_OBJECT, Sphere, Params);
 
-    DrawDebugSphere(GetWorld(), Center, collectibleDetectionRadius * 0.2f, 20, closeToDeathFloor ? FColor::Orange : FColor::Orange, false, 0.05f);
+    if (bDrawWallDebug) DrawDebugSphere(GetWorld(), Center, collectibleDetectionRadius * 0.2f, 20, closeToDeathFloor ? FColor::Orange : FColor::Orange, false, 0.05f);
 
     float MinSpeedScale = 0.2f;
     OutSpeedScale = closeToDeathFloor ? 0.0f : FMath::Clamp(MinHitDist / WallDetectionDistance, MinSpeedScale, 1.0f);
   
+	// Détection droite/gauche pour ajuster la direction d'évitement
     const float ProbeAngle = 90.f; 
     const FVector LeftDir = DesiredDir.RotateAngleAxis(ProbeAngle, FVector::UpVector).GetSafeNormal();
     const FVector RightDir = DesiredDir.RotateAngleAxis(-ProbeAngle, FVector::UpVector).GetSafeNormal();
@@ -161,7 +165,6 @@ bool ASDTAICharacter::ComputeObstacleAvoidance(float DeltaTime, float& OutSpeedS
     }
     else if(bLeftBlocked && !bRightBlocked)
     {
-        
 		AvoidTurnRateDegPerSec = -FMath::Abs(AvoidTurnRateDegPerSec);
     }
     float TurnAngle = AvoidTurnRateDegPerSec * DeltaTime;
@@ -228,7 +231,6 @@ bool ASDTAICharacter::ComputePursuit()  {
 bool ASDTAICharacter::HasClearPathTo(FVector End) const {
 
     const FVector Start = GetActorLocation();
-
 
     FCollisionShape shape;
     TArray<FHitResult> WallHits;
@@ -329,7 +331,6 @@ bool ASDTAICharacter::DetectCollectible() {
         {
             float DistSq = FVector::DistSquared(GetActorLocation(), CurrentCollectible->GetActorLocation());
 
-            
             if (DistSq <= MinDistanceSq)
             {
                 MinDistanceSq = DistSq;
