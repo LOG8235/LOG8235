@@ -31,7 +31,7 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
     }
     else
     {
-        // Update navigation along path (move along)
+        Super::FollowPathSegment(DeltaTime);
     }
 }
 
@@ -53,6 +53,10 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
     }
     else
     {
+        if (UCharacterMovementComponent* CharMovement = Cast<UCharacterMovementComponent>(MovementComp))
+        {
+            CharMovement->SetMovementMode(MOVE_Walking);
+        }
         // Handle normal segments
     }
 }

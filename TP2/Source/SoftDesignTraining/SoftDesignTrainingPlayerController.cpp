@@ -83,9 +83,36 @@ void ASoftDesignTrainingPlayerController::ZoomCamera(float axisValue)
 
 void ASoftDesignTrainingPlayerController::MoveCharacter()
 {
-    // TODO : find the position of the mouse in the world 
-    // And move the agent to this position IF possible
-    // Validate you can move through m_CanMoveCharacter
+    if (!m_CanMoveCharacter)
+    {
+        return;
+    }
+    FHitResult mousePosition;
+    if (GetHitResultUnderCursor(ECC_Visibility, false, mousePosition))
+    {
+        APawn* pawn = GetPawn();
+        if (pawn)
+        {
+		 
+            UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, mousePosition.Location);
+            if (m_PathFollowingComponent && m_PathFollowingComponent->HasValidPath())
+            {
+                const FNavPathSharedPtr path = m_PathFollowingComponent->GetPath();
+                if (path.IsValid())
+                {
+                    const TArray<FNavPathPoint>& pathPoints = path->GetPathPoints();
+                    for (int i = 0; i < pathPoints.Num(); ++i)
+                    {
+                        DrawDebugSphere(GetWorld(), pathPoints[i].Location, 25.f, 12, FColor::Green, false, 5.f);
+                        if (i < pathPoints.Num() - 1)
+                        {
+                            DrawDebugLine(GetWorld(), pathPoints[i].Location, pathPoints[i + 1].Location, FColor::Yellow, false, 5.f, 0, 5.f);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void ASoftDesignTrainingPlayerController::Activate()
@@ -98,6 +125,7 @@ void ASoftDesignTrainingPlayerController::Activate()
 
     m_CanMoveCharacter = false;
     // TODO : Mouvement of the agent should be stopped !!
+    StopMovement();
 
     // Make an overlap to find what is near us to activate it
     TArray<FOverlapResult> results;
