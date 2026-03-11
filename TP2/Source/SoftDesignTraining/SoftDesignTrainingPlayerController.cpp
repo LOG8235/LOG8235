@@ -9,6 +9,8 @@
 #include "SDTBridge.h"
 #include "SDTBoatOperator.h"
 #include "Engine/OverlapResult.h"
+#include <NavigationSystem.h>
+#include "NavigationPath.h"
 
 ASoftDesignTrainingPlayerController::ASoftDesignTrainingPlayerController()
 {
@@ -83,36 +85,35 @@ void ASoftDesignTrainingPlayerController::ZoomCamera(float axisValue)
 
 void ASoftDesignTrainingPlayerController::MoveCharacter()
 {
-    if (!m_CanMoveCharacter)
+    // TODO : find the position of the mouse in the world 
+    // And move the agent to this position IF possible
+    // Validate you can move through m_CanMoveCharacter
+
+    if (m_CanMoveCharacter)
     {
-        return;
-    }
-    FHitResult mousePosition;
-    if (GetHitResultUnderCursor(ECC_Visibility, false, mousePosition))
-    {
-        APawn* pawn = GetPawn();
-        if (pawn)
+        FHitResult Hit;
+        GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, Hit);
+        if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
         {
-		 
-            UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, mousePosition.Location);
-            if (m_PathFollowingComponent && m_PathFollowingComponent->HasValidPath())
+
+            UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.Location);
+
+            UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), GetPawn()->GetActorLocation(), Hit.Location);
+
+            if (NavPath && NavPath->PathPoints.Num() > 1)
             {
-                const FNavPathSharedPtr path = m_PathFollowingComponent->GetPath();
-                if (path.IsValid())
+                for (int32 i = 0; i < NavPath->PathPoints.Num(); ++i)
                 {
-                    const TArray<FNavPathPoint>& pathPoints = path->GetPathPoints();
-                    for (int i = 0; i < pathPoints.Num(); ++i)
+                    DrawDebugSphere(GetWorld(), NavPath->PathPoints[i], 20.f, 8, FColor::Blue, false, 3.f);
+
+                    if (i < NavPath->PathPoints.Num() - 1)
                     {
-                        DrawDebugSphere(GetWorld(), pathPoints[i].Location, 25.f, 12, FColor::Green, false, 5.f);
-                        if (i < pathPoints.Num() - 1)
-                        {
-                            DrawDebugLine(GetWorld(), pathPoints[i].Location, pathPoints[i + 1].Location, FColor::Yellow, false, 5.f, 0, 5.f);
-                        }
+                        DrawDebugLine(GetWorld(), NavPath->PathPoints[i], NavPath->PathPoints[i + 1], FColor::Green, false, 3.f, 0, 2.f);
                     }
                 }
             }
         }
-    }
+	}
 }
 
 void ASoftDesignTrainingPlayerController::Activate()

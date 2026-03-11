@@ -7,7 +7,6 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "NavigationSystem.h"
 #include "NavLinkCustomInterface.h"
-
 #include "DrawDebugHelpers.h"
 
 USDTPathFollowingComponent::USDTPathFollowingComponent(const FObjectInitializer& ObjectInitializer)
@@ -25,13 +24,30 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
     const FNavPathPoint& segmentStart = points[MoveSegmentStartIndex];
     const FNavPathPoint& segmentEnd = points[MoveSegmentEndIndex];
 
+
     if (SDTUtils::HasJumpFlag(segmentStart))
     {
         // Update jump along path / nav link proxy
     }
     else
     {
-        Super::FollowPathSegment(DeltaTime);
+        AController* MyController = Cast<AController>(GetOwner());
+
+        if (MyController)
+        {
+            APawn* MyPawn = MyController->GetPawn();
+
+            if (MyPawn)
+            {
+
+                FVector TargetLocation = points[MoveSegmentEndIndex].Location;
+                FVector CurrentLocation = MyPawn->GetActorLocation();
+                FVector Direction = (TargetLocation - CurrentLocation).GetSafeNormal2D();
+
+                MyPawn->AddMovementInput(Direction, 1.0f);
+                
+            }
+        }
     }
 }
 
