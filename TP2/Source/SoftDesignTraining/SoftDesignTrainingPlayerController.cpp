@@ -97,6 +97,25 @@ void ASoftDesignTrainingPlayerController::MoveCharacter()
         {
             UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.Location);
 
+            if (GEngine)
+            {
+                APawn* PlayerPawn = GetPawn();
+                FVector Velocity = PlayerPawn->GetVelocity();
+                GEngine->AddOnScreenDebugMessage(
+                    -1,          // Key: A unique key to prevent the same message from being added multiple times (-1 means no key needed).
+                    5.0f,        // Display Time: How long to display the message, in seconds.
+                    FColor::Red, // Text Color: The color in which it should be printed.
+                    FString::Printf(TEXT("Speed: %f"), Velocity.Length()) // Message: The FString or TEXT() literal to display.
+                );
+
+                //GEngine->AddOnScreenDebugMessage(
+                //    -1,          // Key: A unique key to prevent the same message from being added multiple times (-1 means no key needed).
+                //    5.0f,        // Display Time: How long to display the message, in seconds.
+                //    FColor::Red, // Text Color: The color in which it should be printed.
+                //    FString::Printf(TEXT("NAME: %s"), *GetOwner()->GetName()) // Message: The FString or TEXT() literal to display.
+                //);
+            }
+
             UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), GetPawn()->GetActorLocation(), Hit.Location);
 
             if (NavPath && NavPath->GetPath().IsValid())
