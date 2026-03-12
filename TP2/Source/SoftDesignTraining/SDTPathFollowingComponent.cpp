@@ -37,13 +37,27 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
             if (MyPawn)
             {
                
-				FVector StartJump = MyPawn->GetActorLocation();
+                FVector CurrentLoc = MyPawn->GetActorLocation();
 				FVector End = segmentEnd.Location;
 
-                float JumpSpeed = 500.f; 
-                FVector NewLoc = FMath::VInterpConstantTo(StartJump, segmentEnd, DeltaTime, JumpSpeed);
+                float JumpSpeed = 1000.f; 
+                FVector NewLoc = FMath::VInterpConstantTo(CurrentLoc, End, DeltaTime, JumpSpeed);
+
+                jumProgress = FVector::Dist(JumpStartLocation, NewLoc) / FVector::Dist(JumpStartLocation, End);
+
+                float ArcVisual = FMath::Sin(jumProgress * PI);
+                float MaxHeight = 500.f;
+
+                float BaseZ = FMath::Lerp(JumpStartLocation.Z, End.Z, jumProgress);
+                NewLoc.Z = BaseZ + (ArcVisual * MaxHeight);
 
                 MyPawn->SetActorLocation(NewLoc);
+
+				if (jumProgress >= 0.95f)
+                {
+                    SetMoveSegment(MoveSegmentEndIndex);
+                }
+
 			}
         }
     }
@@ -81,16 +95,28 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
 
     const FNavPathPoint& segmentStart = points[MoveSegmentStartIndex];
 
+    uint16 RawFlags = FNavMeshNodeFlags(segmentStart.Flags).AreaFlags;
+
     if (SDTUtils::HasJumpFlag(segmentStart) && FNavMeshNodeFlags(segmentStart.Flags).IsNavLink())
     {
-        // Handle starting jump
+
+        isJumping = true;
+
         AController* MyController = Cast<AController>(GetOwner());
         ACharacter* MyChar = Cast<ACharacter>(MyController->GetPawn());
 
-		MyChar->GetCharacterMovement()->StopMovementImmediately();
+        if (MyChar && MyChar->GetCharacterMovement()) {
+		    JumpStartLocation = MyChar->GetActorLocation();
+            MyChar->GetCharacterMovement()->ClearAccumulatedForces();
+            MyChar->GetCharacterMovement()->Velocity *= 0.05f;
+            MyChar->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+        }
+        
     }
     else
     {
+        isJumping = false;
+
         if (UCharacterMovementComponent* CharMovement = Cast<UCharacterMovementComponent>(MovementComp))
         {
             CharMovement->SetMovementMode(MOVE_Walking);

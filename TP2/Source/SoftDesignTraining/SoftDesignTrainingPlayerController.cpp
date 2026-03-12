@@ -89,31 +89,37 @@ void ASoftDesignTrainingPlayerController::MoveCharacter()
     // And move the agent to this position IF possible
     // Validate you can move through m_CanMoveCharacter
 
+    
     if (m_CanMoveCharacter)
     {
         FHitResult Hit;
-        GetHitResultUnderCursor(ECollisionChannel::ECC_Visibility, false, Hit);
         if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
         {
-
             UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.Location);
 
             UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), GetPawn()->GetActorLocation(), Hit.Location);
 
-            if (NavPath && NavPath->PathPoints.Num() > 1)
+            if (NavPath && NavPath->GetPath().IsValid())
             {
-                for (int32 i = 0; i < NavPath->PathPoints.Num(); ++i)
-                {
-                    DrawDebugSphere(GetWorld(), NavPath->PathPoints[i], 20.f, 8, FColor::Blue, false, 3.f);
+                const TArray<FNavPathPoint>& Points = NavPath->GetPath()->GetPathPoints();
 
-                    if (i < NavPath->PathPoints.Num() - 1)
+                if (Points.Num() > 1)
+                {
+                    for (int32 i = 0; i < Points.Num(); ++i)
                     {
-                        DrawDebugLine(GetWorld(), NavPath->PathPoints[i], NavPath->PathPoints[i + 1], FColor::Green, false, 3.f, 0, 2.f);
+                        DrawDebugSphere(GetWorld(), Points[i].Location, 20.f, 8, FColor::Blue, false, 3.f);
+
+                        if (i < Points.Num() - 1)
+                        {
+
+                            DrawDebugLine(GetWorld(), Points[i].Location, Points[i + 1].Location, FColor::Green, false, 3.f, 0, 2.f);
+                        }
                     }
                 }
             }
         }
-	}
+    }
+    
 }
 
 void ASoftDesignTrainingPlayerController::Activate()

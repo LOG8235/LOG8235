@@ -23,4 +23,7 @@ public:
 
     UPROPERTY(BlueprintReadOnly)
     bool isJumping{ false };
+
+    FVector JumpStartLocation;
+
 };
