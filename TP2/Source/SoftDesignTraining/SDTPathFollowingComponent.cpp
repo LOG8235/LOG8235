@@ -91,6 +91,10 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
     }
     else
     {
+        if (UCharacterMovementComponent* CharMovement = Cast<UCharacterMovementComponent>(MovementComp))
+        {
+            CharMovement->SetMovementMode(MOVE_Walking);
+        }
         // Handle normal segments
     }
 }

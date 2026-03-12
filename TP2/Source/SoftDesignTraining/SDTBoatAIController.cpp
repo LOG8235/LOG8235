@@ -29,7 +29,10 @@ void ASDTBoatAIController::GoToBestTarget(float deltaTime)
 			if (actor != nullptr)
 			{
 				// TODO : Agents wants to move towards actor
-
+				// Obtenir la location de l'acteur et se déplacer vers lui
+				FVector actorLocation = actor->GetActorLocation();
+				MoveToLocation(actorLocation);
+				m_ReachedTarget = false;
 				m_BoatState = BoatState::GO_TO_START_BRIDGE;
 			}
 
@@ -70,7 +73,9 @@ void ASDTBoatAIController::GoToBestTarget(float deltaTime)
 					// TODO : we want to move the agent towards the DropLocation of the boatOperator 
 					// Check ASDTBoatOperator::GetDropLocation to get the location.
 					// Note that m_ReachedTarget should be set to FALSE if the move is valid!
-
+					
+					MoveToLocation(boatOperator ->GetDropLocation());
+					m_ReachedTarget = false;
 					break;
 				}
 			}
@@ -104,6 +109,8 @@ void ASDTBoatAIController::GoToBestTarget(float deltaTime)
 				if (actor != nullptr)
 				{
 					// TODO : Agents wants to move towards actor
+					MoveToLocation(actor->GetActorLocation());
+					m_ReachedTarget = false;
 				}
 			}
 
@@ -133,6 +140,8 @@ void ASDTBoatAIController::NotifyUnloadComplete()
 	AActor* actor = FindActorWithTag(tag, false);
 	if (actor != nullptr)
 	{
+		MoveToLocation(actor->GetActorLocation());
+		m_ReachedTarget = false;
 		// TODO : Agents wants to move towards actor
 	}
 }
@@ -143,6 +152,27 @@ void ASDTBoatAIController::ShowNavigationPath()
 	// Use the UPathFollowingComponent of the AIController to get the path
 	// This function is called while m_ReachedTarget is false 
 	// Check void ASDTBaseAIController::Tick for how it works.
+	UPathFollowingComponent* pathFollowingComp = GetPathFollowingComponent();
+	if (pathFollowingComp && pathFollowingComp->HasValidPath())
+	{
+		const FNavPathSharedPtr path = pathFollowingComp->GetPath();
+		if (path.IsValid())
+		{
+			const TArray<FNavPathPoint>& pathPoints = path->GetPathPoints();
+
+			// Dessiner des sphères à chaque point du chemin
+			for (int32 i = 0; i < pathPoints.Num(); ++i)
+			{
+				DrawDebugSphere(GetWorld(), pathPoints[i].Location, 25.f, 12, FColor::Blue, false, 0.05f);
+
+				// Dessiner une ligne entre les points consécutifs
+				if (i < pathPoints.Num() - 1)
+				{
+					DrawDebugLine(GetWorld(), pathPoints[i].Location, pathPoints[i + 1].Location, FColor::Cyan, false, 0.05f, 0, 5.f);
+				}
+			}
+		}
+	}
 }
 
 BoatState ASDTBoatAIController::GetBoatState()
