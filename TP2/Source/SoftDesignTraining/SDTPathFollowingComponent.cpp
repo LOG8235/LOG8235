@@ -28,6 +28,24 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
     if (SDTUtils::HasJumpFlag(segmentStart))
     {
         // Update jump along path / nav link proxy
+        AController* MyController = Cast<AController>(GetOwner());
+
+        if (MyController)
+        {
+            APawn* MyPawn = MyController->GetPawn();
+
+            if (MyPawn)
+            {
+               
+				FVector StartJump = MyPawn->GetActorLocation();
+				FVector End = segmentEnd.Location;
+
+                float JumpSpeed = 500.f; 
+                FVector NewLoc = FMath::VInterpConstantTo(StartJump, segmentEnd, DeltaTime, JumpSpeed);
+
+                MyPawn->SetActorLocation(NewLoc);
+			}
+        }
     }
     else
     {
@@ -66,6 +84,10 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
     if (SDTUtils::HasJumpFlag(segmentStart) && FNavMeshNodeFlags(segmentStart.Flags).IsNavLink())
     {
         // Handle starting jump
+        AController* MyController = Cast<AController>(GetOwner());
+        ACharacter* MyChar = Cast<ACharacter>(MyController->GetPawn());
+
+		MyChar->GetCharacterMovement()->StopMovementImmediately();
     }
     else
     {

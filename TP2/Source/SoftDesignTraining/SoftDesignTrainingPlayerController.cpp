@@ -126,6 +126,7 @@ void ASoftDesignTrainingPlayerController::Activate()
 
     m_CanMoveCharacter = false;
     // TODO : Mouvement of the agent should be stopped !!
+    StopMovement();
 
     // Make an overlap to find what is near us to activate it
     TArray<FOverlapResult> results;
