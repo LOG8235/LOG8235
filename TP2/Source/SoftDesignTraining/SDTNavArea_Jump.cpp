@@ -9,6 +9,8 @@ USDTNavArea_Jump::USDTNavArea_Jump(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer)
 {
     SDTUtils::SetNavTypeFlag(AreaFlags, SDTUtils::Jump);
+    DefaultCost = 1.0f; 
+    FixedAreaEnteringCost = 0.0f;
 }
 
 
