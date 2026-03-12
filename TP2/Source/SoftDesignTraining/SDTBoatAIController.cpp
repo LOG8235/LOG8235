@@ -140,9 +140,9 @@ void ASDTBoatAIController::NotifyUnloadComplete()
 	AActor* actor = FindActorWithTag(tag, false);
 	if (actor != nullptr)
 	{
+		// TODO : Agents wants to move towards actor
 		MoveToLocation(actor->GetActorLocation());
 		m_ReachedTarget = false;
-		// TODO : Agents wants to move towards actor
 	}
 }
 
