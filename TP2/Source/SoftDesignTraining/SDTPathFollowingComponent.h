@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "Curves/CurveFloat.h" 
 #include "SDTPathFollowingComponent.generated.h"
 
 /**
@@ -23,6 +24,9 @@ public:
 
     UPROPERTY(BlueprintReadOnly)
     bool isJumping{ false };
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jump")
+    UCurveFloat* JumpCurve = nullptr;
 
     FVector JumpStartLocation;
 

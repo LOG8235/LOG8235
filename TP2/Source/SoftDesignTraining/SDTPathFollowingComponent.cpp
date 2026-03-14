@@ -20,7 +20,9 @@ USDTPathFollowingComponent::USDTPathFollowingComponent(const FObjectInitializer&
 */
 void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
 {
+    if (!Path.IsValid()) return;
     const TArray<FNavPathPoint>& points = Path->GetPathPoints();
+    if (MoveSegmentStartIndex >= points.Num() || MoveSegmentEndIndex >= points.Num()) return;
     const FNavPathPoint& segmentStart = points[MoveSegmentStartIndex];
     const FNavPathPoint& segmentEnd = points[MoveSegmentEndIndex];
 
@@ -36,26 +38,40 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
 
             if (MyPawn)
             {
-               
-                FVector CurrentLoc = MyPawn->GetActorLocation();
-				FVector End = segmentEnd.Location;
+                
+                const float JumpDuration = 1.5f;
+                jumProgress += DeltaTime / JumpDuration;
+                jumProgress = FMath::Clamp(jumProgress, 0.f, 1.f);
 
-                float JumpSpeed = 1000.f; 
-                FVector NewLoc = FMath::VInterpConstantTo(CurrentLoc, End, DeltaTime, JumpSpeed);
+                // Interpolation XY lineaire entre depart et arrivee
+                FVector NewLocation = FMath::Lerp(JumpStartLocation, segmentEnd.Location, jumProgress);
 
-                jumProgress = FVector::Dist(JumpStartLocation, NewLoc) / FVector::Dist(JumpStartLocation, End);
-
-                float ArcVisual = FMath::Sin(jumProgress * PI);
-                float MaxHeight = 500.f;
-
-                float BaseZ = FMath::Lerp(JumpStartLocation.Z, End.Z, jumProgress);
-                NewLoc.Z = BaseZ + (ArcVisual * MaxHeight);
-
-                MyPawn->SetActorLocation(NewLoc);
-
-				if (jumProgress >= 0.95f)
+                // Hauteur parabolique via JumpCurve si disponible, sinon arc manuel
+                float HeightOffset = 0.f;
+                if (JumpCurve)
                 {
-                    SetMoveSegment(MoveSegmentEndIndex);
+                    HeightOffset = JumpCurve->GetFloatValue(jumProgress);
+                }
+                else
+                {
+                    // Arc parabolique simple : sin(progress * PI) * hauteur max
+                    HeightOffset = FMath::Sin(jumProgress * PI) * 300.f;
+                }
+                NewLocation.Z += HeightOffset;
+                MyPawn->SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+
+                // Orienter le pawn vers la destination pendant le saut
+                FVector Direction = (segmentEnd.Location - JumpStartLocation).GetSafeNormal2D();
+                if (!Direction.IsNearlyZero())
+                {
+                    MyPawn->SetActorRotation(Direction.Rotation());
+                }
+
+                // Saut termine
+                if (jumProgress >= 1.f && isJumping)
+                {
+                    isJumping = false;
+                    OnSegmentFinished();
                 }
 
 			}
@@ -95,7 +111,7 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
 
     const FNavPathPoint& segmentStart = points[MoveSegmentStartIndex];
 
-    uint16 RawFlags = FNavMeshNodeFlags(segmentStart.Flags).AreaFlags;
+   
 
     if (SDTUtils::HasJumpFlag(segmentStart) && FNavMeshNodeFlags(segmentStart.Flags).IsNavLink())
     {
@@ -110,12 +126,15 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
             MyChar->GetCharacterMovement()->ClearAccumulatedForces();
             MyChar->GetCharacterMovement()->Velocity *= 0.05f;
             MyChar->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+            jumProgress = 0.f;
+            isJumping = true;
         }
         
     }
     else
     {
         isJumping = false;
+        jumProgress = 0.f;
 
         if (UCharacterMovementComponent* CharMovement = Cast<UCharacterMovementComponent>(MovementComp))
         {
