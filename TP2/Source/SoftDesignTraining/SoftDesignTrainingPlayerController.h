@@ -16,7 +16,7 @@ public:
 	ASoftDesignTrainingPlayerController();
 
     void BeginPlay() override;
-
+    virtual void Tick(float DeltaTime) override;
 protected:
 
     virtual void SetupInputComponent() override;
@@ -31,9 +31,10 @@ protected:
     void Deactivate();
 
 protected:
+    void ShowNavigationPath();
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Navigation, meta = (AllowPrivateAccess = "true"))
     USDTPathFollowingComponent* m_PathFollowingComponent;
-
+    bool m_ShowDebugPath;
     bool m_CanMoveCharacter;
 
     ASDTBridge* m_BridgeActivated;

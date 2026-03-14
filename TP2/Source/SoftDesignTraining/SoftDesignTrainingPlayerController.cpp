@@ -16,8 +16,21 @@ ASoftDesignTrainingPlayerController::ASoftDesignTrainingPlayerController()
 {
     // Make a path following component
     m_PathFollowingComponent = CreateDefaultSubobject<USDTPathFollowingComponent>(TEXT("PathFollowingComponent"));
-}
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
 
+    m_ShowDebugPath = false;
+}
+void ASoftDesignTrainingPlayerController::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+
+    // Redessiner le chemin chaque frame si nécessaire
+    if (m_ShowDebugPath)
+    {
+        ShowNavigationPath();
+    }
+}
 void ASoftDesignTrainingPlayerController::SetupInputComponent()
 {
     Super::SetupInputComponent();
@@ -90,55 +103,44 @@ void ASoftDesignTrainingPlayerController::MoveCharacter()
     // Validate you can move through m_CanMoveCharacter
 
     
-    if (m_CanMoveCharacter)
+    if (m_CanMoveCharacter && !m_PathFollowingComponent->isJumping)
     {
         FHitResult Hit;
         if (GetHitResultUnderCursor(ECC_Visibility, false, Hit))
         {
             UAIBlueprintHelperLibrary::SimpleMoveToLocation(this, Hit.Location);
+            m_ShowDebugPath = true;
 
-            if (GEngine)
+       
+        }
+    }
+    
+}
+
+void ASoftDesignTrainingPlayerController::ShowNavigationPath()
+{
+    if (m_PathFollowingComponent && m_PathFollowingComponent->HasValidPath())
+    {
+        const FNavPathSharedPtr path = m_PathFollowingComponent->GetPath();
+        if (path.IsValid())
+        {
+            const TArray<FNavPathPoint>& pathPoints = path->GetPathPoints();
+
+            // Dessiner des sphères à chaque point du chemin
+            for (int32 i = 0; i < pathPoints.Num(); ++i)
             {
-                APawn* PlayerPawn = GetPawn();
-                FVector Velocity = PlayerPawn->GetVelocity();
-                GEngine->AddOnScreenDebugMessage(
-                    -1,          // Key: A unique key to prevent the same message from being added multiple times (-1 means no key needed).
-                    5.0f,        // Display Time: How long to display the message, in seconds.
-                    FColor::Red, // Text Color: The color in which it should be printed.
-                    FString::Printf(TEXT("Speed: %f"), Velocity.Length()) // Message: The FString or TEXT() literal to display.
-                );
-
-                //GEngine->AddOnScreenDebugMessage(
-                //    -1,          // Key: A unique key to prevent the same message from being added multiple times (-1 means no key needed).
-                //    5.0f,        // Display Time: How long to display the message, in seconds.
-                //    FColor::Red, // Text Color: The color in which it should be printed.
-                //    FString::Printf(TEXT("NAME: %s"), *GetOwner()->GetName()) // Message: The FString or TEXT() literal to display.
-                //);
-            }
-
-            UNavigationPath* NavPath = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), GetPawn()->GetActorLocation(), Hit.Location);
-
-            if (NavPath && NavPath->GetPath().IsValid())
-            {
-                const TArray<FNavPathPoint>& Points = NavPath->GetPath()->GetPathPoints();
-
-                if (Points.Num() > 1)
+                DrawDebugSphere(GetWorld(), pathPoints[i].Location, 25.f, 12, FColor::Blue, false, 0.05f);
+                if (i < pathPoints.Num() - 1)
                 {
-                    for (int32 i = 0; i < Points.Num(); ++i)
-                    {
-                        DrawDebugSphere(GetWorld(), Points[i].Location, 20.f, 8, FColor::Blue, false, 3.f);
-
-                        if (i < Points.Num() - 1)
-                        {
-
-                            DrawDebugLine(GetWorld(), Points[i].Location, Points[i + 1].Location, FColor::Green, false, 3.f, 0, 2.f);
-                        }
-                    }
+                    DrawDebugLine(GetWorld(), pathPoints[i].Location, pathPoints[i + 1].Location, FColor::Cyan, false, 0.05f, 0, 5.f);
                 }
             }
         }
     }
-    
+    else
+    {
+        m_ShowDebugPath = false;
+    }
 }
 
 void ASoftDesignTrainingPlayerController::Activate()
@@ -152,7 +154,7 @@ void ASoftDesignTrainingPlayerController::Activate()
     m_CanMoveCharacter = false;
     // TODO : Mouvement of the agent should be stopped !!
     StopMovement();
-
+    m_ShowDebugPath = false;
     // Make an overlap to find what is near us to activate it
     TArray<FOverlapResult> results;
     GetWorld()->OverlapMultiByChannel(results, pawn->GetActorLocation(), pawn->GetActorRotation().Quaternion(), ECollisionChannel::ECC_WorldDynamic, FCollisionShape::MakeSphere(200.f));

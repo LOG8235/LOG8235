@@ -41,7 +41,7 @@ void ASDTAIController::GoToBestTarget(float deltaTime)
             {
                 // TODO : Agents wants to move towards actor
                 MoveToActor(actor);
-                ShowNavigationPath();
+                m_ReachedTarget = false;
                 m_PedestrianState = PedestrianState::GO_TO_BRIDGE;
             }
             break;
@@ -75,7 +75,7 @@ void ASDTAIController::GoToBestTarget(float deltaTime)
             {
                 // TODO : Agents wants to move towards actor
                 MoveToActor(actor);
-                ShowNavigationPath();
+				m_ReachedTarget = false;
             }
             
             break;
@@ -135,11 +135,12 @@ void ASDTAIController::ShowNavigationPath()
     {
         for (int32 i = 0; i < PathPoints.Num(); ++i)
         {
-            DrawDebugSphere(GetWorld(), PathPoints[i], 20.f, 8, FColor::Blue, false, 3.f);
+            DrawDebugSphere(GetWorld(), PathPoints[i], 20.f, 8, FColor::Blue, false, 0.05f);
+
 
             if (i < PathPoints.Num() - 1)
             {
-                DrawDebugLine(GetWorld(), PathPoints[i], PathPoints[i + 1], FColor::Green, false, 3.f, 0, 2.f);
+                DrawDebugLine(GetWorld(), PathPoints[i], PathPoints[i + 1], FColor::Green, false, 0, 0.05f, 3.f);
             }
         }
     }
