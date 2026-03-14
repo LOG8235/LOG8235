@@ -71,6 +71,19 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                 if (jumProgress >= 1.f && isJumping)
                 {
                     isJumping = false;
+                    jumProgress = 1.f;
+                    ACharacter* MyChar = Cast<ACharacter>(MyPawn);
+                    if (MyChar && MyChar->GetCharacterMovement())
+                    {
+                        MyChar->SetActorLocation(segmentEnd.Location, false, nullptr, ETeleportType::TeleportPhysics);
+
+                        UCharacterMovementComponent* MoveComp = MyChar->GetCharacterMovement();
+                        MoveComp->SetMovementMode(MOVE_Walking);
+                        MoveComp->StopMovementImmediately();
+                        MoveComp->Velocity = FVector::ZeroVector;
+                        MoveComp->ClearAccumulatedForces();
+                    }
+
                     OnSegmentFinished();
                 }
 

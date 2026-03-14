@@ -19,10 +19,10 @@ public:
     virtual void FollowPathSegment(float deltaTime) override;
     virtual void SetMoveSegment(int32 segmentStartIndex) override;
 
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadWrite)
     float jumProgress{ 0.f };
 
-    UPROPERTY(BlueprintReadOnly)
+    UPROPERTY(BlueprintReadWrite)
     bool isJumping{ false };
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Jump")
