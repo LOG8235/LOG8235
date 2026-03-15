@@ -129,10 +129,10 @@ void ASDTAIController::ShowNavigationPath()
     if (!PathComp) return;
 
     const FNavPathSharedPtr NavPath = PathComp->GetPath();
-    const TArray<FNavPathPoint>& PathPoints = NavPath->GetPathPoints();
 
-    if (NavPath && PathPoints.Num() > 1)
+    if (NavPath && NavPath->GetPathPoints().Num() > 1)
     {
+        const TArray<FNavPathPoint>& PathPoints = NavPath->GetPathPoints();
         for (int32 i = 0; i < PathPoints.Num(); ++i)
         {
             DrawDebugSphere(GetWorld(), PathPoints[i], 20.f, 8, FColor::Blue, false, 0.05f);
