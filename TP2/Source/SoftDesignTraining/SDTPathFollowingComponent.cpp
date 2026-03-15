@@ -38,7 +38,7 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
 
             if (MyPawn)
             {
-                
+
                 const float JumpDuration = 1.5f;
                 jumProgress += DeltaTime / JumpDuration;
                 jumProgress = FMath::Clamp(jumProgress, 0.f, 1.f);
@@ -68,7 +68,7 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                 }
 
                 // Saut termine
-                if (jumProgress >= 1.f && isJumping)
+                if (jumProgress >= 0.98f && isJumping)
                 {
                     isJumping = false;
                     jumProgress = 1.f;
@@ -87,7 +87,7 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                     OnSegmentFinished();
                 }
 
-			}
+            }
         }
     }
     else
@@ -106,7 +106,7 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                 FVector Direction = (TargetLocation - CurrentLocation).GetSafeNormal2D();
 
                 MyPawn->AddMovementInput(Direction, 1.0f);
-                
+
             }
         }
     }
@@ -124,7 +124,7 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
 
     const FNavPathPoint& segmentStart = points[MoveSegmentStartIndex];
 
-   
+
 
     if (SDTUtils::HasJumpFlag(segmentStart) && FNavMeshNodeFlags(segmentStart.Flags).IsNavLink())
     {
@@ -135,14 +135,14 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
         ACharacter* MyChar = Cast<ACharacter>(MyController->GetPawn());
 
         if (MyChar && MyChar->GetCharacterMovement()) {
-		    JumpStartLocation = MyChar->GetActorLocation();
+            JumpStartLocation = MyChar->GetActorLocation();
             MyChar->GetCharacterMovement()->ClearAccumulatedForces();
             MyChar->GetCharacterMovement()->Velocity *= 0.05f;
             MyChar->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
             jumProgress = 0.f;
             isJumping = true;
         }
-        
+
     }
     else
     {
@@ -156,4 +156,3 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
         // Handle normal segments
     }
 }
-
