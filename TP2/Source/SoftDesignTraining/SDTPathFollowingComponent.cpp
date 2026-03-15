@@ -29,7 +29,6 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
 
     if (SDTUtils::HasJumpFlag(segmentStart))
     {
-        // Update jump along path / nav link proxy
         AController* MyController = Cast<AController>(GetOwner());
 
         if (MyController)
@@ -43,10 +42,8 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                 jumProgress += DeltaTime / JumpDuration;
                 jumProgress = FMath::Clamp(jumProgress, 0.f, 1.f);
 
-                // Interpolation XY lineaire entre depart et arrivee
                 FVector NewLocation = FMath::Lerp(JumpStartLocation, segmentEnd.Location, jumProgress);
 
-                // Hauteur parabolique via JumpCurve si disponible, sinon arc manuel
                 float HeightOffset = 0.f;
                 if (JumpCurve)
                 {
@@ -54,20 +51,17 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                 }
                 else
                 {
-                    // Arc parabolique simple : sin(progress * PI) * hauteur max
                     HeightOffset = FMath::Sin(jumProgress * PI) * 300.f;
                 }
                 NewLocation.Z += HeightOffset;
                 MyPawn->SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 
-                // Orienter le pawn vers la destination pendant le saut
                 FVector Direction = (segmentEnd.Location - JumpStartLocation).GetSafeNormal2D();
                 if (!Direction.IsNearlyZero())
                 {
                     MyPawn->SetActorRotation(Direction.Rotation());
                 }
 
-                // Saut termine
                 if (jumProgress >= 0.98f && isJumping)
                 {
                     isJumping = false;
@@ -153,8 +147,6 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
 
     const FNavPathPoint& segmentStart = points[MoveSegmentStartIndex];
 
-
-
     if (SDTUtils::HasJumpFlag(segmentStart) && FNavMeshNodeFlags(segmentStart.Flags).IsNavLink())
     {
 
@@ -167,7 +159,7 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 segmentStartIndex)
             JumpStartLocation = MyChar->GetActorLocation();
             MyChar->GetCharacterMovement()->ClearAccumulatedForces();
             MyChar->GetCharacterMovement()->Velocity *= 0.05f;
-            MyChar->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+            //MyChar->GetCharacterMovement()->SetMovementMode(MOVE_Flying);
             jumProgress = 0.f;
             isJumping = true;
         }

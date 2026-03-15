@@ -126,7 +126,6 @@ void ASoftDesignTrainingPlayerController::ShowNavigationPath()
         {
             const TArray<FNavPathPoint>& pathPoints = path->GetPathPoints();
 
-            // Dessiner des sphères à chaque point du chemin
             for (int32 i = 0; i < pathPoints.Num(); ++i)
             {
                 DrawDebugSphere(GetWorld(), pathPoints[i].Location, 25.f, 12, FColor::Blue, false, 0.05f);
@@ -146,7 +145,7 @@ void ASoftDesignTrainingPlayerController::ShowNavigationPath()
 void ASoftDesignTrainingPlayerController::Activate()
 {
     APawn* pawn = GetPawn();
-    if (pawn == nullptr)
+    if (pawn == nullptr || m_PathFollowingComponent->isJumping)
     {
         return;
     }
