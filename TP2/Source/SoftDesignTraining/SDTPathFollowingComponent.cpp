@@ -79,9 +79,6 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
 
                         UCharacterMovementComponent* MoveComp = MyChar->GetCharacterMovement();
                         MoveComp->SetMovementMode(MOVE_Walking);
-                        MoveComp->StopMovementImmediately();
-                        MoveComp->Velocity = FVector::ZeroVector;
-                        MoveComp->ClearAccumulatedForces();
                     }
 
                     OnSegmentFinished();
