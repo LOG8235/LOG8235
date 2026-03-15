@@ -98,11 +98,43 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
             if (MyPawn)
             {
 
-                FVector TargetLocation = points[MoveSegmentEndIndex].Location;
                 FVector CurrentLocation = MyPawn->GetActorLocation();
-                FVector Direction = (TargetLocation - CurrentLocation).GetSafeNormal2D();
+                FVector TargetLocation = points[MoveSegmentEndIndex].Location;
 
-                MyPawn->AddMovementInput(Direction, 1.0f);
+                bool bApproachingJump = false;
+                FVector DesiredDirection = FVector::ZeroVector;
+
+                if (MoveSegmentEndIndex < points.Num() - 1)
+                {
+                    const FNavPathPoint& NextPoint = points[MoveSegmentEndIndex];
+
+                    if (SDTUtils::HasJumpFlag(NextPoint) && FNavMeshNodeFlags(NextPoint.Flags).IsNavLink())
+                    {
+                        bApproachingJump = true;
+
+                        const FNavPathPoint& JumpStart = points[MoveSegmentEndIndex];
+                        const FNavPathPoint& JumpEnd = points[MoveSegmentEndIndex + 1];
+
+                        FVector LinkDir = (JumpEnd.Location - JumpStart.Location).GetSafeNormal2D();
+
+                        float ApproachDistance = 150.f;
+                        FVector ApproachPoint = JumpStart.Location - LinkDir * ApproachDistance;
+
+                        FVector ToApproach = (ApproachPoint - CurrentLocation).GetSafeNormal2D();
+
+                        float DistToApproach = FVector::Dist2D(CurrentLocation, ApproachPoint);
+                        float Alpha = FMath::Clamp(1.f - (DistToApproach / 300.f), 0.f, 1.f);
+
+                        DesiredDirection = FMath::Lerp(ToApproach, LinkDir, Alpha).GetSafeNormal();
+                    }
+                }
+
+                if (!bApproachingJump)
+                {
+                    DesiredDirection = (TargetLocation - CurrentLocation).GetSafeNormal2D();
+                }
+
+                MyPawn->AddMovementInput(DesiredDirection, 1.0f);
 
             }
         }
