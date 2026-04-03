@@ -57,18 +57,21 @@ protected:
     void UpdatePlayerInteractionBehavior(const FHitResult& detectionHit, float deltaTime);
     PlayerInteractionBehavior GetCurrentPlayerInteractionBehavior(const FHitResult& hit);
     bool HasLoSOnHit(const FHitResult& hit);
+
+public:
     void MoveToRandomCollectible();
     void MoveToPlayer();
     void MoveToBestFleeLocation();
     void PlayerInteractionLoSUpdate();
     void OnPlayerInteractionNoLosDone();
     void OnMoveToTarget();
-
-public:
     virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
     void RotateTowards(const FVector& targetLocation);
     void SetActorLocation(const FVector& targetLocation);
     void AIStateInterrupted();
+    bool IsPlayerInteractionBehaviorChase() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase; }
+    bool IsPlayerInteractionBehaviorFlee() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee; }
+    PlayerInteractionBehavior m_PlayerInteractionBehavior;
 
 private:
     virtual void GoToBestTarget(float deltaTime) override;
@@ -80,5 +83,5 @@ protected:
     FVector m_JumpTarget;
     FRotator m_ObstacleAvoidanceRotation;
     FTimerHandle m_PlayerInteractionNoLosTimer;
-    PlayerInteractionBehavior m_PlayerInteractionBehavior;
+    
 };
