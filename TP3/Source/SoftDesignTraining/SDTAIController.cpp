@@ -1,6 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "SDTAIController.h"
+#include "SDTChaseGroup.h"
 #include "SoftDesignTraining.h"
 #include "SDTCollectible.h"
 #include "SDTFleeLocation.h"
@@ -29,7 +30,7 @@ void ASDTAIController::GoToBestTarget(float deltaTime)
 
     case PlayerInteractionBehavior_Chase:
 
-        MoveToPlayer();
+        MoveToEncirclementPosition();
 
         break;
 
@@ -80,6 +81,25 @@ void ASDTAIController::MoveToPlayer()
     OnMoveToTarget();
 }
 
+void ASDTAIController::MoveToEncirclementPosition()
+{
+    ASDTChaseGroup* Group = GetOrCreateChaseGroup();
+
+    // Si pas encore de LKP valide ou groupe d'un seul membre : poursuite directe
+    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1)
+    {
+        MoveToPlayer();
+        return;
+    }
+
+    // Récupère la position d'encerclement assignée à cet agent
+    FVector TargetPos = Group->GetEncirclementPositionFor(this);
+
+    MoveToLocation(TargetPos, 0.5f, false, true, true, false, NULL, false);
+    OnMoveToTarget();
+}
+
+
 void ASDTAIController::PlayerInteractionLoSUpdate()
 {
     ACharacter * playerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
@@ -93,18 +113,14 @@ void ASDTAIController::PlayerInteractionLoSUpdate()
     FHitResult losHit;
     GetWorld()->LineTraceSingleByObjectType(losHit, GetPawn()->GetActorLocation(), playerCharacter->GetActorLocation(), TraceObjectTypes);
 
-    bool hasLosOnPlayer = false;
-
-    if (losHit.GetComponent())
-    {
-        if (losHit.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER)
-        {
-            hasLosOnPlayer = true;
-        }
-    }
-
+    bool hasLosOnPlayer = losHit.GetComponent() &&
+                  losHit.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER;
     if (hasLosOnPlayer)
     {
+		// Update de la LKP partagée avec la position actuelle du joueur
+        ASDTChaseGroup* Group = GetOrCreateChaseGroup();
+        if (Group)
+            Group->UpdateLKP(playerCharacter->GetActorLocation());
         if (GetWorld()->GetTimerManager().IsTimerActive(m_PlayerInteractionNoLosTimer))
         {
             GetWorld()->GetTimerManager().ClearTimer(m_PlayerInteractionNoLosTimer);
@@ -132,6 +148,7 @@ void ASDTAIController::OnPlayerInteractionNoLosDone()
     {
         AIStateInterrupted();
         m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
+		UpdateGroupMembership(); 
     }
 }
 
@@ -359,5 +376,39 @@ void ASDTAIController::UpdatePlayerInteractionBehavior(const FHitResult& detecti
     {
         m_PlayerInteractionBehavior = currentBehavior;
         AIStateInterrupted();
+		UpdateGroupMembership(); // met à jour l'appartenance au groupe à chaque transition																					 
+    }
+}
+
+ASDTChaseGroup* ASDTAIController::GetOrCreateChaseGroup()
+{
+    return ASDTChaseGroup::GetInstance(GetWorld());
+}
+
+void ASDTAIController::UpdateGroupMembership()
+{
+    ASDTChaseGroup* Group = GetOrCreateChaseGroup();
+    if (!Group)
+        return;
+
+    if (m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase)
+    {
+        // Rejoint le groupe si pas déjà membre
+        Group->AddMember(this);
+    }
+    else
+    {
+        // Quitte le groupe si l'agent n'est plus en poursuite
+        Group->RemoveMember(this);
+    }
+}
+
+void ASDTAIController::OnGroupDissolved()
+{
+    // Le groupe vient d'être dissous : retour en Collect
+    if (m_PlayerInteractionBehavior != PlayerInteractionBehavior_Collect)
+    {
+        AIStateInterrupted();
+        m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
     }
 }

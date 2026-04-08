@@ -10,6 +10,9 @@ UMyBTService_GetMReachedAndJump::UMyBTService_GetMReachedAndJump()
 {
     NodeName = TEXT("Set ReachedTarget/IsJumping From AIController");
     bNotifyTick = true;
+    // Tick a chaque frame pour des transitions reactives
+    Interval = 0.0f;
+    RandomDeviation = 0.0f;
 
     ReachedTargetKey.SelectedKeyName = TEXT("m_ReachedTarget");
     IsJumpingKey.SelectedKeyName = TEXT("IsJumping");
@@ -23,18 +26,17 @@ void UMyBTService_GetMReachedAndJump::TickNode(UBehaviorTreeComponent& OwnerComp
     if (!Blackboard)
         return;
 
-    ASDTBaseAIController* BaseAIController = Cast<ASDTBaseAIController>(OwnerComp.GetAIOwner());
-    if (!BaseAIController)
+    ASDTAIController* AIController = Cast<ASDTAIController>(OwnerComp.GetAIOwner());
+    if (!AIController)
         return;
 
-    Blackboard->SetValueAsBool(ReachedTargetKey.SelectedKeyName, BaseAIController->m_ReachedTarget);
+    Blackboard->SetValueAsBool(ReachedTargetKey.SelectedKeyName, AIController->m_ReachedTarget);
 
-    bool bIsJumping = false;
-    if (ASDTAIController* AIController = Cast<ASDTAIController>(BaseAIController))
-    {
-        bIsJumping = AIController->AtJumpSegment;
-    }
 
-    Blackboard->SetValueAsBool(IsJumpingKey.SelectedKeyName, bIsJumping);
+    Blackboard->SetValueAsBool(IsJumpingKey.SelectedKeyName, AIController->AtJumpSegment);
+    
+    // Synchronise les nouvelles cles pour les decorateurs de condition
+	Blackboard->SetValueAsBool(TEXT("IsChasing"), AIController->IsPlayerInteractionBehaviorChase());
+	Blackboard->SetValueAsBool(TEXT("IsFleeing"), AIController->IsPlayerInteractionBehaviorFlee());
 }
 

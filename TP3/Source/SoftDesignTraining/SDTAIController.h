@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "SDTBaseAIController.h"
 #include "SDTAIController.generated.h"
+//#include "SDTChaseGroup.h"
+class ASDTChaseGroup;
 
 /**
  * 
@@ -13,6 +15,13 @@ UCLASS(ClassGroup = AI, config = Game)
 class SOFTDESIGNTRAINING_API ASDTAIController : public ASDTBaseAIController
 {
 	GENERATED_BODY()
+public:
+    enum PlayerInteractionBehavior
+    {
+        PlayerInteractionBehavior_Collect,
+        PlayerInteractionBehavior_Chase,
+        PlayerInteractionBehavior_Flee
+    };
 
 public:
     ASDTAIController(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
@@ -44,44 +53,46 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AI)
     bool Landing = false;
 
+    void MoveToRandomCollectible();
+    void MoveToPlayer();
+    void MoveToEncirclementPosition();
+    void MoveToBestFleeLocation();
+    void PlayerInteractionLoSUpdate();
+    void OnPlayerInteractionNoLosDone();
+    void OnMoveToTarget();
+	void AIStateInterrupted();
+	void OnGroupDissolved();						  
+    virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
+    void RotateTowards(const FVector& targetLocation);
+    void SetActorLocation(const FVector& targetLocation);
+    
+    bool IsPlayerInteractionBehaviorChase() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase; }
+    bool IsPlayerInteractionBehaviorFlee() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee; }
+    bool IsPlayerInteractionBehaviorCollect() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Collect; }
+	PlayerInteractionBehavior m_PlayerInteractionBehavior;    
+
 protected:
 
-    enum PlayerInteractionBehavior
-    {
-        PlayerInteractionBehavior_Collect,
-        PlayerInteractionBehavior_Chase,
-        PlayerInteractionBehavior_Flee
-    };
+
 
     void GetHightestPriorityDetectionHit(const TArray<FHitResult>& hits, FHitResult& outDetectionHit);
     void UpdatePlayerInteractionBehavior(const FHitResult& detectionHit, float deltaTime);
     PlayerInteractionBehavior GetCurrentPlayerInteractionBehavior(const FHitResult& hit);
     bool HasLoSOnHit(const FHitResult& hit);
+    /** Rejoint ou quitte le groupe de poursuite selon le comportement courant. */
+    void UpdateGroupMembership();
 
-public:
-    void MoveToRandomCollectible();
-    void MoveToPlayer();
-    void MoveToBestFleeLocation();
-    void PlayerInteractionLoSUpdate();
-    void OnPlayerInteractionNoLosDone();
-    void OnMoveToTarget();
-    virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
-    void RotateTowards(const FVector& targetLocation);
-    void SetActorLocation(const FVector& targetLocation);
-    void AIStateInterrupted();
-    bool IsPlayerInteractionBehaviorChase() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase; }
-    bool IsPlayerInteractionBehaviorFlee() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee; }
-    PlayerInteractionBehavior m_PlayerInteractionBehavior;
+    FVector m_JumpTarget;
+    FRotator m_ObstacleAvoidanceRotation;
+    FTimerHandle m_PlayerInteractionNoLosTimer;
+
 
 private:
     virtual void GoToBestTarget(float deltaTime) override;
     virtual void UpdatePlayerInteraction(float deltaTime) override;
     virtual void ShowNavigationPath() override;
+	ASDTChaseGroup* GetOrCreateChaseGroup();
 
 
-protected:
-    FVector m_JumpTarget;
-    FRotator m_ObstacleAvoidanceRotation;
-    FTimerHandle m_PlayerInteractionNoLosTimer;
     
 };
