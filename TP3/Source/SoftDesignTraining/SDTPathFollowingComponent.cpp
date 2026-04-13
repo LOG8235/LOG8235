@@ -35,22 +35,21 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
         {
             if (controller->InAir)
             {
-                m_JumpProgressRatio = FMath::Clamp(m_JumpProgressRatio + DeltaTime * controller->JumpSpeed, 0.f, 1.f);
+                m_JumpProgressRatio += DeltaTime;
+                FVector JumpOffset = FVector(0.f, 0.f, 0.f);
+
                 FVector nextLocation = FMath::Lerp(SegmentStart.Location, CurrentTarget, m_JumpProgressRatio);
-                float jumpHeight = 0.f;
-                if (controller->JumpCurve)
-                    jumpHeight = controller->JumpCurve->GetFloatValue(m_JumpProgressRatio) * controller->JumpApexHeight;
-																													  
-                nextLocation.Z += jumpHeight;
 
-                const int32 LastSegmentStartIndex   = points.Num() - 2;
-                const bool  bNotFollowingLastSegment = (MoveSegmentStartIndex < LastSegmentStartIndex);
+                float jumpHeight = controller->JumpCurve->GetFloatValue(m_JumpProgressRatio) * controller->JumpApexHeight;
+                nextLocation += FVector(0.f, 0.f, jumpHeight) + JumpOffset;
 
-                // Direction vers la position cible du saut (pas besoin de remultiplier par JumpSpeed)
-                NavMovementInterface->RequestDirectMove((nextLocation - controller->GetPawn()->GetActorLocation()), bNotFollowingLastSegment);
+                const int32 LastSegmentStartIndex = points.Num() - 2;
+                const bool bNotFollowingLastSegment = (MoveSegmentStartIndex < LastSegmentStartIndex);
 
-                DrawDebugSphere(GetWorld(), nextLocation, 10.f, 8, FColor::Red, false, 5.f);            
-			}
+                NavMovementInterface->RequestDirectMove((nextLocation - controller->GetPawn()->GetActorLocation()) * controller->JumpSpeed, bNotFollowingLastSegment);
+
+                DrawDebugSphere(GetWorld(), nextLocation, 10.f, 8, FColor::Red, false, 5.f);
+            }
             else
             {
                 if (controller->Landing)
@@ -71,13 +70,13 @@ void USDTPathFollowingComponent::FollowPathSegment(float DeltaTime)
                 NavMovementInterface->RequestDirectMove((CurrentTarget - controller->GetPawn()->GetActorLocation()), bNotFollowingLastSegment);
             }
         }
-        
+
         return;
     }
 
     // set to false by default, we will set set this back to true if appropriate
     bIsDecelerating = false;
-    
+
     const bool bAccelerationBased = NavMovementInterface->UseAccelerationForPathFollowing();
     if (bAccelerationBased)
     {
@@ -135,8 +134,6 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 SegmentStartIndex)
                 {
                     controller->GetPawn()->bUseControllerRotationYaw = true;
                     controller->AtJumpSegment = true;
-                    controller->InAir         = false;
-                    controller->Landing       = false;										  
 
                     NavMovementInterface->StopMovementKeepPathing();
 
@@ -159,7 +156,6 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 SegmentStartIndex)
                 {
                     controller->GetPawn()->bUseControllerRotationYaw = false;
                     controller->AtJumpSegment = false;
-					controller->InAir         = false;					  
                     controller->Landing = false;
 
                     charMoveComp->bOrientRotationToMovement = true;
@@ -169,4 +165,3 @@ void USDTPathFollowingComponent::SetMoveSegment(int32 SegmentStartIndex)
         }
     }
 }
-

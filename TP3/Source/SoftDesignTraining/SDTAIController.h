@@ -70,7 +70,7 @@ public:
     bool IsPlayerInteractionBehaviorFlee() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee; }
     bool IsPlayerInteractionBehaviorCollect() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Collect; }
 	PlayerInteractionBehavior m_PlayerInteractionBehavior;    
-
+    virtual void UpdatePlayerInteraction(float deltaTime) override;
 protected:
 
 
@@ -89,7 +89,7 @@ protected:
 
 private:
     virtual void GoToBestTarget(float deltaTime) override;
-    virtual void UpdatePlayerInteraction(float deltaTime) override;
+    
     virtual void ShowNavigationPath() override;
 	ASDTChaseGroup* GetOrCreateChaseGroup();
 
