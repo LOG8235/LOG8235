@@ -11,6 +11,7 @@
 //#include "UnrealMathUtility.h"
 #include "SDTUtils.h"
 #include "EngineUtils.h"
+#include "BehaviorTree/BlackboardComponent.h"
 
 ASDTAIController::ASDTAIController(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<USDTPathFollowingComponent>(TEXT("PathFollowingComponent")))
@@ -322,7 +323,21 @@ bool ASDTAIController::HasLoSOnHit(const FHitResult& hit)
 void ASDTAIController::AIStateInterrupted()
 {
     StopMovement();
-    m_ReachedTarget = true;
+
+    m_ReachedTarget = false;
+    AtJumpSegment = false;
+    InAir = false;
+
+    if (UBlackboardComponent* BB = GetBlackboardComponent())
+    {
+        BB->SetValueAsBool(TEXT("m_ReachedTarget"), false);
+        BB->SetValueAsBool(TEXT("IsJumping"), false);
+        BB->SetValueAsBool(TEXT("IsChasing"), false);
+        BB->SetValueAsBool(TEXT("IsFleeing"), false);
+    }
+
+    RunBehaviorTree(BehaviorTreeAsset);
+  
 }
 
 ASDTAIController::PlayerInteractionBehavior ASDTAIController::GetCurrentPlayerInteractionBehavior(const FHitResult& hit)

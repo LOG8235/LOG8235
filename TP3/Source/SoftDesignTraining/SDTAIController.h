@@ -53,6 +53,9 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AI)
     bool Landing = false;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
+    UBehaviorTree* BehaviorTreeAsset;
+
     void MoveToRandomCollectible();
     void MoveToPlayer();
     void MoveToEncirclementPosition();
@@ -65,7 +68,6 @@ public:
     virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
     void RotateTowards(const FVector& targetLocation);
     void SetActorLocation(const FVector& targetLocation);
-    
     bool IsPlayerInteractionBehaviorChase() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase; }
     bool IsPlayerInteractionBehaviorFlee() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee; }
     bool IsPlayerInteractionBehaviorCollect() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Collect; }
