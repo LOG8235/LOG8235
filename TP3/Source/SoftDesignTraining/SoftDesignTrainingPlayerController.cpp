@@ -4,8 +4,6 @@
 #include "SoftDesignTraining.h"
 #include "SoftDesignTrainingCharacter.h"
 
-#include "DrawDebugHelpers.h"
-
 ASoftDesignTrainingPlayerController::ASoftDesignTrainingPlayerController()
 {
 }

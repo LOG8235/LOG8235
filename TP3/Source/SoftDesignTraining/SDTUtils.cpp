@@ -3,7 +3,6 @@
 #include "SDTUtils.h"
 #include "SoftDesignTraining.h"
 #include "SoftDesignTrainingMainCharacter.h"
-#include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 
 /*static*/ bool SDTUtils::Raycast(UWorld* uWorld, FVector sourcePoint, FVector targetPoint)

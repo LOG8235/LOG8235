@@ -74,7 +74,19 @@ public:
 	PlayerInteractionBehavior m_PlayerInteractionBehavior;    
     virtual void UpdatePlayerInteraction(float deltaTime) override;
 protected:
+    float m_NextPerceptionUpdateTime = 0.f;
+    float m_NextLoSUpdateTime = 0.f;
+    float m_NextMoveRequestTime = 0.f;
 
+    FVector m_LastRequestedMoveTarget = FVector::ZeroVector;
+    bool m_HasRequestedMove = false;
+
+    TWeakObjectPtr<ASDTChaseGroup> m_CachedChaseGroup;
+
+    bool IsRelevantToPlayerView() const;
+    bool ShouldIssueMoveRequest(const FVector& NewTarget, float Cooldown) const;
+    void UpdateAITickRate();
+    void RequestMoveIfNeeded(const FVector& Target, float AcceptanceRadius, float Cooldown, bool bUsePathfinding = true);
 
 
     void GetHightestPriorityDetectionHit(const TArray<FHitResult>& hits, FHitResult& outDetectionHit);
@@ -92,9 +104,5 @@ protected:
 private:
     virtual void GoToBestTarget(float deltaTime) override;
     
-    virtual void ShowNavigationPath() override;
 	ASDTChaseGroup* GetOrCreateChaseGroup();
-
-
-    
 };
