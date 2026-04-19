@@ -81,7 +81,6 @@ protected:
     void UpdatePlayerInteractionBehavior(const FHitResult& detectionHit, float deltaTime);
     PlayerInteractionBehavior GetCurrentPlayerInteractionBehavior(const FHitResult& hit);
     bool HasLoSOnHit(const FHitResult& hit);
-    /** Rejoint ou quitte le groupe de poursuite selon le comportement courant. */
     void UpdateGroupMembership();
 
     FVector m_JumpTarget;

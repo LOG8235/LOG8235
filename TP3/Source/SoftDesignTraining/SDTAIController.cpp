@@ -93,14 +93,12 @@ void ASDTAIController::MoveToEncirclementPosition()
 
     float DistanceToPlayer = FVector::Dist(SelfPawn->GetActorLocation(), PlayerCharacter->GetActorLocation());
 
-    // Si pas encore de LKP valide ou groupe d'un seul membre : poursuite directe
     if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1 || DistanceToPlayer <= 550)
     {
         MoveToPlayer();
         return;
     }
 
-    // Récupère la position d'encerclement assignée à cet agent
     FVector TargetPos = Group->GetEncirclementPositionFor(this);
 
     MoveToLocation(TargetPos, 0.5f, false, true, true, false, NULL, false);
@@ -125,7 +123,6 @@ void ASDTAIController::PlayerInteractionLoSUpdate()
         losHit.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER;
     if (hasLosOnPlayer)
     {
-        // Update de la LKP partagée avec la position actuelle du joueur
         ASDTChaseGroup* Group = GetOrCreateChaseGroup();
         if (Group)
             Group->UpdateLKP(playerCharacter->GetActorLocation());
@@ -257,7 +254,6 @@ void ASDTAIController::UpdatePlayerInteraction(float deltaTime)
 
     m_AIUpdateAccumulator = 0.f;
 
-    //finish jump before updating AI state
     if (AtJumpSegment)
         return;
 
@@ -357,15 +353,24 @@ ASDTAIController::PlayerInteractionBehavior ASDTAIController::GetCurrentPlayerIn
         if (!HasLoSOnHit(hit))
             return PlayerInteractionBehavior_Collect;
 
-        UE_LOG(LogTemp, Log, TEXT("GET CURRENT IF BEEF"));
-
         return SDTUtils::IsPlayerPoweredUp(GetWorld()) ? PlayerInteractionBehavior_Flee : PlayerInteractionBehavior_Chase;
+    }
+    else if (m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee)
+    {
+        PlayerInteractionLoSUpdate();
+
+        if (SDTUtils::IsPlayerPoweredUp(GetWorld()))
+        {
+            return PlayerInteractionBehavior_Flee;
+        }
+        else
+        {
+            return PlayerInteractionBehavior_Collect;
+        }
     }
     else
     {
         PlayerInteractionLoSUpdate();
-
-        UE_LOG(LogTemp, Log, TEXT("GET CURRENT ELSE BEEF"));
 
         return SDTUtils::IsPlayerPoweredUp(GetWorld()) ? PlayerInteractionBehavior_Flee : PlayerInteractionBehavior_Chase;
     }
@@ -379,7 +384,6 @@ void ASDTAIController::GetHightestPriorityDetectionHit(const TArray<FHitResult>&
         {
             if (component->GetCollisionObjectType() == COLLISION_PLAYER)
             {
-                //we can't get more important than the player
                 outDetectionHit = hit;
                 return;
             }
@@ -411,8 +415,6 @@ ASDTChaseGroup* ASDTAIController::GetOrCreateChaseGroup()
 void ASDTAIController::UpdateGroupMembership()
 {
     ASDTChaseGroup* Group = GetOrCreateChaseGroup();
-    if (!Group)
-        return;
 
     if (m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase)
     {
@@ -422,7 +424,6 @@ void ASDTAIController::UpdateGroupMembership()
 
 void ASDTAIController::OnGroupDissolved()
 {
-    // Le groupe vient d'être dissous : retour en Collect
     if (m_PlayerInteractionBehavior != PlayerInteractionBehavior_Collect)
     {
         AIStateInterrupted();

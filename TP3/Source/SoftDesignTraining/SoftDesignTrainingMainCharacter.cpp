@@ -6,6 +6,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "SDTChaseGroup.h"
+#include "SDTAIController.h"
 
 ASoftDesignTrainingMainCharacter::ASoftDesignTrainingMainCharacter()
 {
@@ -36,7 +37,6 @@ void ASoftDesignTrainingMainCharacter::OnBeginOverlap(UPrimitiveComponent* Overl
             ASDTChaseGroup* ChaseGroup = ASDTChaseGroup::GetInstance(GetWorld());
             ChaseGroup->DissolveGroup();
         }
-       
     }
 }
 
@@ -59,5 +59,5 @@ void ASoftDesignTrainingMainCharacter::OnPowerUpDone()
 
     ASDTChaseGroup* ChaseGroup = ASDTChaseGroup::GetInstance(GetWorld());
     ChaseGroup->DissolveGroup();
-    UE_LOG(LogTemp, Log, TEXT("DISSOLVED TA MERE"));
 }
+

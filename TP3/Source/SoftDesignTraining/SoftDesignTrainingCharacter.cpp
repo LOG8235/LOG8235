@@ -7,7 +7,7 @@
 #include "SDTProjectile.h"
 #include "SDTUtils.h"
 #include "SDTCollectible.h"
-
+#include "SDTChaseGroup.h"
 
 ASoftDesignTrainingCharacter::ASoftDesignTrainingCharacter()
 {
@@ -51,5 +51,9 @@ void ASoftDesignTrainingCharacter::Die()
     if (ASDTAIController* controller = Cast<ASDTAIController>(GetController()))
     {
         controller->AIStateInterrupted();
+    }
+    else {
+        ASDTChaseGroup* ChaseGroup = ASDTChaseGroup::GetInstance(GetWorld());
+        ChaseGroup->DissolveGroup();
     }
 }

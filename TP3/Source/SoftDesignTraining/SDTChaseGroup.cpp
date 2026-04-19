@@ -31,7 +31,6 @@ ASDTChaseGroup* ASDTChaseGroup::GetInstance(UWorld* World)
 
 void ASDTChaseGroup::AddMember(ASDTAIController* Controller)
 {
-    UE_LOG(LogTemp, Log, TEXT("AJOUT D'UN FDP AU GROUPE"));
     if (!Controller || Members.Contains(Controller))
         return;
 
