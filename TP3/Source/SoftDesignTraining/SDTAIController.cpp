@@ -86,8 +86,15 @@ void ASDTAIController::MoveToEncirclementPosition()
 {
     ASDTChaseGroup* Group = GetOrCreateChaseGroup();
 
+    APawn* SelfPawn = GetPawn();
+    ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+    if (!SelfPawn || !PlayerCharacter)
+        return;
+
+    float DistanceToPlayer = FVector::Dist(SelfPawn->GetActorLocation(), PlayerCharacter->GetActorLocation());
+
     // Si pas encore de LKP valide ou groupe d'un seul membre : poursuite directe
-    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1)
+    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1 || DistanceToPlayer <= 300)
     {
         MoveToPlayer();
         return;
@@ -231,7 +238,7 @@ void ASDTAIController::ShowNavigationPath()
 
             for (int i = 0; i < pathPoints.Num(); ++i)
             {
-                if (i != 0)
+                if (i != 0 and m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase)
                 {
                     DrawDebugLine(GetWorld(), pathPoints[i].Location, pathPoints[i - 1].Location, FColor::Yellow);
                 }
