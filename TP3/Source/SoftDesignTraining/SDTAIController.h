@@ -9,12 +9,12 @@
 class ASDTChaseGroup;
 
 /**
- * 
+ *
  */
 UCLASS(ClassGroup = AI, config = Game)
 class SOFTDESIGNTRAINING_API ASDTAIController : public ASDTBaseAIController
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 public:
     enum PlayerInteractionBehavior
     {
@@ -53,7 +53,7 @@ public:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = AI)
     bool Landing = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = AI)
     UBehaviorTree* BehaviorTreeAsset;
 
     void MoveToRandomCollectible();
@@ -63,31 +63,19 @@ public:
     void PlayerInteractionLoSUpdate();
     void OnPlayerInteractionNoLosDone();
     void OnMoveToTarget();
-	void AIStateInterrupted();
-	void OnGroupDissolved();						  
+    void AIStateInterrupted();
+    void OnGroupDissolved();
     virtual void OnMoveCompleted(FAIRequestID RequestID, const FPathFollowingResult& Result) override;
     void RotateTowards(const FVector& targetLocation);
     void SetActorLocation(const FVector& targetLocation);
     bool IsPlayerInteractionBehaviorChase() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase; }
     bool IsPlayerInteractionBehaviorFlee() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee; }
     bool IsPlayerInteractionBehaviorCollect() const { return m_PlayerInteractionBehavior == PlayerInteractionBehavior_Collect; }
-	PlayerInteractionBehavior m_PlayerInteractionBehavior;    
+    PlayerInteractionBehavior m_PlayerInteractionBehavior;
     virtual void UpdatePlayerInteraction(float deltaTime) override;
 protected:
-    float m_NextPerceptionUpdateTime = 0.f;
-    float m_NextLoSUpdateTime = 0.f;
-    float m_NextMoveRequestTime = 0.f;
-
-    FVector m_LastRequestedMoveTarget = FVector::ZeroVector;
-    bool m_HasRequestedMove = false;
-
-    TWeakObjectPtr<ASDTChaseGroup> m_CachedChaseGroup;
-
-    bool IsRelevantToPlayerView() const;
-    bool ShouldIssueMoveRequest(const FVector& NewTarget, float Cooldown) const;
-    void UpdateAITickRate();
-    void RequestMoveIfNeeded(const FVector& Target, float AcceptanceRadius, float Cooldown, bool bUsePathfinding = true);
-
+    float m_AIUpdateAccumulator = 0.f;
+    float m_AIUpdateInterval = 0.1f;
 
     void GetHightestPriorityDetectionHit(const TArray<FHitResult>& hits, FHitResult& outDetectionHit);
     void UpdatePlayerInteractionBehavior(const FHitResult& detectionHit, float deltaTime);
@@ -103,6 +91,7 @@ protected:
 
 private:
     virtual void GoToBestTarget(float deltaTime) override;
-    
-	ASDTChaseGroup* GetOrCreateChaseGroup();
+
+    virtual void ShowNavigationPath() override;
+    ASDTChaseGroup* GetOrCreateChaseGroup();
 };

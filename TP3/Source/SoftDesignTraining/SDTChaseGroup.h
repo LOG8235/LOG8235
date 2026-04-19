@@ -77,7 +77,6 @@ public:
 
 protected:
     virtual void BeginPlay() override;
-    float LastLKPUpdateTime = -1000.f;
 
 private:
     // Liste des controllers membres du groupe

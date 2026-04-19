@@ -6,40 +6,17 @@
 #include "SDTCollectible.h"
 #include "SDTFleeLocation.h"
 #include "SDTPathFollowingComponent.h"
+#include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 //#include "UnrealMathUtility.h"
 #include "SDTUtils.h"
 #include "EngineUtils.h"
 #include "BehaviorTree/BlackboardComponent.h"
-#include "Engine/World.h"
-#include "Camera/PlayerCameraManager.h"
-#include "GameFramework/PlayerController.h"
-
-namespace
-{
-    constexpr float VisibleTickInterval = 0.08f;
-    constexpr float HiddenTickInterval = 0.25f;
-
-    constexpr float CollectMoveRequestCooldown = 0.35f;
-    constexpr float ChaseMoveRequestCooldown = 0.20f;
-    constexpr float FleeMoveRequestCooldown = 0.40f;
-
-    constexpr float PerceptionUpdateVisible = 0.10f;
-    constexpr float PerceptionUpdateHidden = 0.30f;
-
-    constexpr float LoSUpdateVisible = 0.15f;
-    constexpr float LoSUpdateHidden = 0.35f;
-
-    constexpr float TargetRefreshDistSq = 100.f * 100.f;
-}
 
 ASDTAIController::ASDTAIController(const FObjectInitializer& ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<USDTPathFollowingComponent>(TEXT("PathFollowingComponent")))
 {
     m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
-    PrimaryActorTick.bCanEverTick = true; 
-    PrimaryActorTick.bStartWithTickEnabled = true; 
-    PrimaryActorTick.TickInterval = HiddenTickInterval + FMath::FRandRange(0.0f, 0.02f);
 }
 
 void ASDTAIController::GoToBestTarget(float deltaTime)
@@ -68,98 +45,65 @@ void ASDTAIController::GoToBestTarget(float deltaTime)
 
 void ASDTAIController::MoveToRandomCollectible()
 {
-    static TArray<TWeakObjectPtr<ASDTCollectible>> CachedCollectibles;
-    static float LastCollectibleCacheTime = 0.f;
-    const float CollectibleCacheInterval = 2.0f;
+    float closestSqrCollectibleDistance = 18446744073709551610.f;
+    ASDTCollectible* closestCollectible = nullptr;
 
-    UWorld* World = GetWorld();
-    if (!World)
-        return;
+    TArray<AActor*> foundCollectibles;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), ASDTCollectible::StaticClass(), foundCollectibles);
 
-    const float Now = World->GetTimeSeconds();
-
-    if (CachedCollectibles.Num() == 0 || Now - LastCollectibleCacheTime > CollectibleCacheInterval)
+    while (foundCollectibles.Num() != 0)
     {
-        CachedCollectibles.Reset();
+        int index = FMath::RandRange(0, foundCollectibles.Num() - 1);
 
-        TArray<AActor*> FoundActors;
-        UGameplayStatics::GetAllActorsOfClass(World, ASDTCollectible::StaticClass(), FoundActors);
+        ASDTCollectible* collectibleActor = Cast<ASDTCollectible>(foundCollectibles[index]);
+        if (!collectibleActor)
+            return;
 
-        for (AActor* Actor : FoundActors)
+        if (!collectibleActor->IsOnCooldown())
         {
-            ASDTCollectible* Collectible = Cast<ASDTCollectible>(Actor);
-            if (IsValid(Collectible))
-            {
-                CachedCollectibles.Add(Collectible);
-            }
-        }
-
-        LastCollectibleCacheTime = Now;
-    }
-
-    int32 NumAttempts = CachedCollectibles.Num();
-
-    while (NumAttempts > 0 && CachedCollectibles.Num() > 0)
-    {
-        const int32 Index = FMath::RandRange(0, CachedCollectibles.Num() - 1);
-        ASDTCollectible* CollectibleActor = CachedCollectibles[Index].Get();
-
-        if (!IsValid(CollectibleActor))
-        {
-            CachedCollectibles.RemoveAt(Index);
-            continue;
-        }
-
-        if (!CollectibleActor->IsOnCooldown())
-        {
-            RequestMoveIfNeeded(CollectibleActor->GetActorLocation(), 0.5f, CollectMoveRequestCooldown, true);
+            MoveToLocation(foundCollectibles[index]->GetActorLocation(), 0.5f, false, true, true, false, NULL, false);
+            OnMoveToTarget();
             return;
         }
-
-        --NumAttempts;
+        else
+        {
+            foundCollectibles.RemoveAt(index);
+        }
     }
 }
 
 void ASDTAIController::MoveToPlayer()
 {
-    ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
-    if (!PlayerCharacter)
+    ACharacter* playerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+    if (!playerCharacter)
         return;
 
-    RequestMoveIfNeeded(PlayerCharacter->GetActorLocation(), 0.5f, ChaseMoveRequestCooldown, true);
+    MoveToActor(playerCharacter, 0.5f, false, true, true, NULL, false);
+    OnMoveToTarget();
 }
 
 void ASDTAIController::MoveToEncirclementPosition()
 {
     ASDTChaseGroup* Group = GetOrCreateChaseGroup();
 
+    // Si pas encore de LKP valide ou groupe d'un seul membre : poursuite directe
     if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1)
     {
         MoveToPlayer();
         return;
     }
 
-    const FVector TargetPos = Group->GetEncirclementPositionFor(this);
-    RequestMoveIfNeeded(TargetPos, 0.5f, ChaseMoveRequestCooldown, true);
+    // Récupère la position d'encerclement assignée à cet agent
+    FVector TargetPos = Group->GetEncirclementPositionFor(this);
+
+    MoveToLocation(TargetPos, 0.5f, false, true, true, false, NULL, false);
+    OnMoveToTarget();
 }
 
 
 void ASDTAIController::PlayerInteractionLoSUpdate()
 {
-    UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    const float Now = World->GetTimeSeconds();
-    const bool bVisibleRelevant = IsRelevantToPlayerView();
-    const float LoSInterval = bVisibleRelevant ? LoSUpdateVisible : LoSUpdateHidden;
-
-    if (Now < m_NextLoSUpdateTime)
-        return;
-
-    m_NextLoSUpdateTime = Now + LoSInterval;
-
-    ACharacter * playerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+    ACharacter* playerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
     if (!playerCharacter)
         return;
 
@@ -171,10 +115,10 @@ void ASDTAIController::PlayerInteractionLoSUpdate()
     GetWorld()->LineTraceSingleByObjectType(losHit, GetPawn()->GetActorLocation(), playerCharacter->GetActorLocation(), TraceObjectTypes);
 
     bool hasLosOnPlayer = losHit.GetComponent() &&
-                  losHit.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER;
+        losHit.GetComponent()->GetCollisionObjectType() == COLLISION_PLAYER;
     if (hasLosOnPlayer)
     {
-		// Update de la LKP partagée avec la position actuelle du joueur
+        // Update de la LKP partagée avec la position actuelle du joueur
         ASDTChaseGroup* Group = GetOrCreateChaseGroup();
         if (Group)
             Group->UpdateLKP(playerCharacter->GetActorLocation());
@@ -191,7 +135,7 @@ void ASDTAIController::PlayerInteractionLoSUpdate()
             GetWorld()->GetTimerManager().SetTimer(m_PlayerInteractionNoLosTimer, this, &ASDTAIController::OnPlayerInteractionNoLosDone, 3.f, false);
         }
     }
-    
+
 }
 
 void ASDTAIController::OnPlayerInteractionNoLosDone()
@@ -202,73 +146,47 @@ void ASDTAIController::OnPlayerInteractionNoLosDone()
     {
         AIStateInterrupted();
         m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
-		UpdateGroupMembership(); 
+        UpdateGroupMembership();
     }
 }
 
 void ASDTAIController::MoveToBestFleeLocation()
 {
-    static TArray<TWeakObjectPtr<ASDTFleeLocation>> CachedFleeLocations;
-    static float LastFleeCacheTime = 0.f;
-    constexpr float FleeCacheInterval = 5.0f;
+    float bestLocationScore = 0.f;
+    ASDTFleeLocation* bestFleeLocation = nullptr;
 
-    UWorld* World = GetWorld();
-    APawn* SelfPawn = GetPawn();
-    ACharacter* PlayerCharacter = UGameplayStatics::GetPlayerCharacter(World, 0);
-
-    if (!World || !SelfPawn || !PlayerCharacter)
+    ACharacter* playerCharacter = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0);
+    if (!playerCharacter)
         return;
 
-    const float Now = World->GetTimeSeconds();
-
-    if (CachedFleeLocations.Num() == 0 || Now - LastFleeCacheTime > FleeCacheInterval)
+    for (TActorIterator<ASDTFleeLocation> actorIterator(GetWorld(), ASDTFleeLocation::StaticClass()); actorIterator; ++actorIterator)
     {
-        CachedFleeLocations.Reset();
-
-        for (TActorIterator<ASDTFleeLocation> It(World, ASDTFleeLocation::StaticClass()); It; ++It)
+        ASDTFleeLocation* fleeLocation = Cast<ASDTFleeLocation>(*actorIterator);
+        if (fleeLocation)
         {
-            if (IsValid(*It))
+            float distToFleeLocation = FVector::Dist(fleeLocation->GetActorLocation(), playerCharacter->GetActorLocation());
+
+            FVector selfToPlayer = playerCharacter->GetActorLocation() - GetPawn()->GetActorLocation();
+            selfToPlayer.Normalize();
+
+            FVector selfToFleeLocation = fleeLocation->GetActorLocation() - GetPawn()->GetActorLocation();
+            selfToFleeLocation.Normalize();
+
+            float fleeLocationToPlayerAngle = FMath::RadiansToDegrees(acosf(FVector::DotProduct(selfToPlayer, selfToFleeLocation)));
+            float locationScore = distToFleeLocation + fleeLocationToPlayerAngle * 100.f;
+
+            if (locationScore > bestLocationScore)
             {
-                CachedFleeLocations.Add(*It);
+                bestLocationScore = locationScore;
+                bestFleeLocation = fleeLocation;
             }
         }
-
-        LastFleeCacheTime = Now;
     }
 
-    float BestScore = -FLT_MAX;
-    FVector BestTarget = FVector::ZeroVector;
-
-    FVector SelfToPlayer = PlayerCharacter->GetActorLocation() - SelfPawn->GetActorLocation();
-    SelfToPlayer.Normalize();
-
-    for (int32 i = CachedFleeLocations.Num() - 1; i >= 0; --i)
+    if (bestFleeLocation)
     {
-        ASDTFleeLocation* FleeLocation = CachedFleeLocations[i].Get();
-        if (!IsValid(FleeLocation))
-        {
-            CachedFleeLocations.RemoveAtSwap(i);
-            continue;
-        }
-
-        FVector SelfToFlee = FleeLocation->GetActorLocation() - SelfPawn->GetActorLocation();
-        const float DistToFlee = SelfToFlee.Size();
-        SelfToFlee.Normalize();
-
-        const float Dot = FVector::DotProduct(SelfToPlayer, SelfToFlee);
-        // Dot near -1 means opposite direction from player, which is good
-        const float Score = DistToFlee - Dot * 1000.f;
-
-        if (Score > BestScore)
-        {
-            BestScore = Score;
-            BestTarget = FleeLocation->GetActorLocation();
-        }
-    }
-
-    if (!BestTarget.IsZero())
-    {
-        RequestMoveIfNeeded(BestTarget, 0.5f, FleeMoveRequestCooldown, true);
+        MoveToLocation(bestFleeLocation->GetActorLocation(), 0.5f, false, true, false, false, NULL, false);
+        OnMoveToTarget();
     }
 }
 
@@ -302,26 +220,38 @@ void ASDTAIController::OnMoveCompleted(FAIRequestID RequestID, const FPathFollow
     m_ReachedTarget = true;
 }
 
+void ASDTAIController::ShowNavigationPath()
+{
+    if (UPathFollowingComponent* pathFollowingComponent = GetPathFollowingComponent())
+    {
+        if (pathFollowingComponent->HasValidPath())
+        {
+            const FNavPathSharedPtr path = pathFollowingComponent->GetPath();
+            TArray<FNavPathPoint> pathPoints = path->GetPathPoints();
+
+            for (int i = 0; i < pathPoints.Num(); ++i)
+            {
+                if (i != 0)
+                {
+                    DrawDebugLine(GetWorld(), pathPoints[i].Location, pathPoints[i - 1].Location, FColor::Yellow);
+                }
+            }
+        }
+    }
+}
+
 void ASDTAIController::UpdatePlayerInteraction(float deltaTime)
 {
+    m_AIUpdateAccumulator += deltaTime;
+
+    if (m_AIUpdateAccumulator < m_AIUpdateInterval)
+        return;
+
+    m_AIUpdateAccumulator = 0.f;
+
     //finish jump before updating AI state
     if (AtJumpSegment)
         return;
-
-    UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    UpdateAITickRate();
-
-    const float Now = World->GetTimeSeconds();
-    const bool bVisibleRelevant = IsRelevantToPlayerView();
-    const float PerceptionInterval = bVisibleRelevant ? PerceptionUpdateVisible : PerceptionUpdateHidden;
-
-    if (Now < m_NextPerceptionUpdateTime)
-        return;
-
-    m_NextPerceptionUpdateTime = Now + PerceptionInterval;
 
     APawn* selfPawn = GetPawn();
     if (!selfPawn)
@@ -403,7 +333,7 @@ void ASDTAIController::AIStateInterrupted()
     }
 
     RunBehaviorTree(BehaviorTreeAsset);
-  
+
 }
 
 ASDTAIController::PlayerInteractionBehavior ASDTAIController::GetCurrentPlayerInteractionBehavior(const FHitResult& hit)
@@ -441,7 +371,7 @@ void ASDTAIController::GetHightestPriorityDetectionHit(const TArray<FHitResult>&
                 outDetectionHit = hit;
                 return;
             }
-            else if(component->GetCollisionObjectType() == COLLISION_COLLECTIBLE)
+            else if (component->GetCollisionObjectType() == COLLISION_COLLECTIBLE)
             {
                 outDetectionHit = hit;
             }
@@ -457,17 +387,13 @@ void ASDTAIController::UpdatePlayerInteractionBehavior(const FHitResult& detecti
     {
         m_PlayerInteractionBehavior = currentBehavior;
         AIStateInterrupted();
-		UpdateGroupMembership(); // met à jour l'appartenance au groupe à chaque transition																					 
+        UpdateGroupMembership(); // met à jour l'appartenance au groupe à chaque transition																					 
     }
 }
 
 ASDTChaseGroup* ASDTAIController::GetOrCreateChaseGroup()
 {
-    if (m_CachedChaseGroup.IsValid())
-        return m_CachedChaseGroup.Get();
-
-    m_CachedChaseGroup = ASDTChaseGroup::GetInstance(GetWorld());
-    return m_CachedChaseGroup.Get();
+    return ASDTChaseGroup::GetInstance(GetWorld());
 }
 
 void ASDTAIController::UpdateGroupMembership()
@@ -496,71 +422,4 @@ void ASDTAIController::OnGroupDissolved()
         AIStateInterrupted();
         m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
     }
-}
-
-bool ASDTAIController::IsRelevantToPlayerView() const
-{
-    APawn* SelfPawn = GetPawn();
-    UWorld* World = GetWorld();
-    if (!SelfPawn || !World)
-        return false;
-
-    APlayerController* PC = UGameplayStatics::GetPlayerController(World, 0);
-    if (!PC)
-        return false;
-
-    APlayerCameraManager* CamMgr = PC->PlayerCameraManager;
-    if (!CamMgr)
-        return false;
-
-    const FVector ToAI = SelfPawn->GetActorLocation() - CamMgr->GetCameraLocation();
-    const float DistSq = ToAI.SizeSquared();
-
-    // Far agents get reduced updates even if technically in front
-    if (DistSq > FMath::Square(2500.f))
-        return false;
-
-    const FVector CamForward = CamMgr->GetCameraRotation().Vector();
-    const FVector DirToAI = ToAI.GetSafeNormal();
-
-    return FVector::DotProduct(CamForward, DirToAI) > 0.2f;
-}
-
-void ASDTAIController::UpdateAITickRate()
-{
-    PrimaryActorTick.TickInterval = IsRelevantToPlayerView() ? VisibleTickInterval : HiddenTickInterval;
-}
-
-bool ASDTAIController::ShouldIssueMoveRequest(const FVector& NewTarget, float Cooldown) const
-{
-    UWorld* World = GetWorld();
-    if (!World)
-        return false;
-
-    const float Now = World->GetTimeSeconds();
-
-    if (!m_HasRequestedMove)
-        return true;
-
-    if (Now >= m_NextMoveRequestTime)
-        return true;
-
-    return FVector::DistSquared(NewTarget, m_LastRequestedMoveTarget) > TargetRefreshDistSq;
-}
-
-void ASDTAIController::RequestMoveIfNeeded(const FVector& Target, float AcceptanceRadius, float Cooldown, bool bUsePathfinding)
-{
-    UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    if (!ShouldIssueMoveRequest(Target, Cooldown))
-        return;
-
-    MoveToLocation(Target, AcceptanceRadius, false, bUsePathfinding, true, false, nullptr, false);
-    OnMoveToTarget();
-
-    m_LastRequestedMoveTarget = Target;
-    m_HasRequestedMove = true;
-    m_NextMoveRequestTime = World->GetTimeSeconds() + Cooldown;
 }

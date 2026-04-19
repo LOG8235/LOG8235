@@ -6,7 +6,6 @@
 #include "SDTAIController.h"
 #include "SDTProjectile.h"
 #include "SDTUtils.h"
-#include "DrawDebugHelpers.h"
 #include "SDTCollectible.h"
 
 

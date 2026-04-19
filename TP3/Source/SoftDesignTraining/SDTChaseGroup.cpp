@@ -7,20 +7,11 @@
 #include "GameFramework/Character.h"
 #include "Kismet/GameplayStatics.h"
 #include "NavigationSystem.h"
-#include "Engine/World.h"
-
-namespace
-{
-    constexpr float LKPUpdateMinInterval = 0.20f;
-    constexpr float LKPMinMoveDistSq = 150.f * 150.f;
-    constexpr bool bEnableChaseGroupDebug = false;
-}
 
 ASDTChaseGroup::ASDTChaseGroup()
 {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
-    PrimaryActorTick.TickInterval = 0.25f; 
 }
 
 void ASDTChaseGroup::BeginPlay()
@@ -99,22 +90,8 @@ bool ASDTChaseGroup::IsMember(ASDTAIController* Controller) const
 
 void ASDTChaseGroup::UpdateLKP(const FVector& NewLKP)
 {
-    UWorld* World = GetWorld();
-    if (!World)
-        return;
-
-    const float Now = World->GetTimeSeconds();
-
-    const bool bNeedsInitialSet = !bHasValidLKP;
-    const bool bMovedEnough = FVector::DistSquared(LastKnownPlayerPosition, NewLKP) > LKPMinMoveDistSq;
-    const bool bIntervalElapsed = (Now - LastLKPUpdateTime) >= LKPUpdateMinInterval;
-
-    if (!bNeedsInitialSet && (!bMovedEnough || !bIntervalElapsed))
-        return;
-
     LastKnownPlayerPosition = NewLKP;
     bHasValidLKP = true;
-    LastLKPUpdateTime = Now;
 
     RecalculateEncirclementPositions();
 }
@@ -127,7 +104,6 @@ void ASDTChaseGroup::RecalculateEncirclementPositions()
 {
     if (Members.Num() == 0 || !bHasValidLKP)
         return;
-    EncirclementPositions.Reset();
 
     UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
     const int32 Count = Members.Num();
@@ -201,7 +177,7 @@ void ASDTChaseGroup::OptimizePositionAssignment()
 
         FVector AgentLoc = Pawn->GetActorLocation();
         float BestDist = FLT_MAX;
-        int32 BestIdx  = i; // fallback
+        int32 BestIdx = i; // fallback
 
         for (int32 j = 0; j < N; ++j)
         {
@@ -212,7 +188,7 @@ void ASDTChaseGroup::OptimizePositionAssignment()
             if (Dist < BestDist)
             {
                 BestDist = Dist;
-                BestIdx  = j;
+                BestIdx = j;
             }
         }
 
@@ -239,14 +215,6 @@ FVector ASDTChaseGroup::GetEncirclementPositionFor(ASDTAIController* Controller)
 void ASDTChaseGroup::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
-    for (int32 i = Members.Num() - 1; i >= 0; --i)
-    {
-        if (!IsValid(Members[i]) || !IsValid(Members[i]->GetPawn()))
-        {
-            EncirclementPositions.Remove(Members[i]);
-            Members.RemoveAtSwap(i);
-        }
-    }
 
     DrawGroupDebug();
 

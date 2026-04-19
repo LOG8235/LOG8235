@@ -6,7 +6,7 @@
 // Sets default values
 AFleeLocation::AFleeLocation()
 {
-	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 
 }
 
