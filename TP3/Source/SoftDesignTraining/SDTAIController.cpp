@@ -144,9 +144,10 @@ void ASDTAIController::OnPlayerInteractionNoLosDone()
 
     if (!AtJumpSegment)
     {
+
         AIStateInterrupted();
+        if(m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee)
         m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
-        UpdateGroupMembership();
     }
 }
 
@@ -387,7 +388,7 @@ void ASDTAIController::UpdatePlayerInteractionBehavior(const FHitResult& detecti
     {
         m_PlayerInteractionBehavior = currentBehavior;
         AIStateInterrupted();
-        UpdateGroupMembership(); // met à jour l'appartenance au groupe à chaque transition																					 
+        UpdateGroupMembership(); 																				 
     }
 }
 
@@ -404,13 +405,7 @@ void ASDTAIController::UpdateGroupMembership()
 
     if (m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase)
     {
-        // Rejoint le groupe si pas déjà membre
         Group->AddMember(this);
-    }
-    else
-    {
-        // Quitte le groupe si l'agent n'est plus en poursuite
-        Group->RemoveMember(this);
     }
 }
 
