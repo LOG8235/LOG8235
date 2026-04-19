@@ -151,9 +151,10 @@ void ASDTAIController::OnPlayerInteractionNoLosDone()
 
     if (!AtJumpSegment)
     {
+
         AIStateInterrupted();
-        //m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
-        UpdateGroupMembership();
+        if(m_PlayerInteractionBehavior == PlayerInteractionBehavior_Flee)
+        m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
     }
 }
 
@@ -398,7 +399,7 @@ void ASDTAIController::UpdatePlayerInteractionBehavior(const FHitResult& detecti
     {
         m_PlayerInteractionBehavior = currentBehavior;
         AIStateInterrupted();
-        UpdateGroupMembership(); // met à jour l'appartenance au groupe à chaque transition																					 
+        UpdateGroupMembership(); 																				 
     }
 }
 

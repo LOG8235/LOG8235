@@ -1,4 +1,3 @@
-// LOG8235 - TP3 - Agents intelligents pour jeux vidéo
 #include "SDTChaseGroup.h"
 #include "SDTAIController.h"
 #include "SDTUtils.h"
@@ -75,9 +74,10 @@ bool ASDTChaseGroup::IsMember(ASDTAIController* Controller) const
 
 void ASDTChaseGroup::UpdateLKP(const FVector& NewLKP)
 {
+
     LastKnownPlayerPosition = NewLKP;
     bHasValidLKP = true;
-
+	LKPTimeout = 3.f;
     RecalculateEncirclementPositions();
 }
 
@@ -97,10 +97,8 @@ void ASDTChaseGroup::RecalculateEncirclementPositions()
 
         float AngleDeg = (360.f / Count) * i;
         float AngleRad = FMath::DegreesToRadians(AngleDeg);
-
         FVector IdealPos = LastKnownPlayerPosition
             + FVector(FMath::Cos(AngleRad), FMath::Sin(AngleRad), 0.f) * EncirclementRadius;
-
         FNavLocation NavPos;
         if (NavSys && NavSys->ProjectPointToNavigation(IdealPos, NavPos, FVector(200.f, 200.f, 200.f)))
         {
@@ -111,7 +109,6 @@ void ASDTChaseGroup::RecalculateEncirclementPositions()
             EncirclementPositions.Add(Member, LastKnownPlayerPosition);
         }
     }
-
     OptimizePositionAssignment();
 }
 
@@ -148,7 +145,7 @@ void ASDTChaseGroup::OptimizePositionAssignment()
 
         FVector AgentLoc = Pawn->GetActorLocation();
         float BestDist = FLT_MAX;
-        int32 BestIdx = i; 
+        int32 BestIdx = i;
 
         for (int32 j = 0; j < N; ++j)
         {
@@ -181,9 +178,13 @@ FVector ASDTChaseGroup::GetEncirclementPositionFor(ASDTAIController* Controller)
 void ASDTChaseGroup::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
+    if (HasLkPTimeout()) {
+		DissolveGroup();
+		LKPTimeout = 3.f;
+    }
+	LKPTimeout -= DeltaTime;
 
     DrawGroupDebug();
-
     if (bHasValidLKP && Members.Num() > 0)
     {
         if (SDTUtils::IsPlayerPoweredUp(GetWorld()))
