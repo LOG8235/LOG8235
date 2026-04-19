@@ -6,8 +6,7 @@
 EBTNodeResult::Type UMyBTTask_ChasePlayer::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
     ASDTAIController* AIController = Cast<ASDTAIController>(OwnerComp.GetAIOwner());
-    if (!AIController)
-        return EBTNodeResult::Failed;
+
     AIController->MoveToEncirclementPosition(); 
-    return EBTNodeResult::Succeeded;
+    return EBTNodeResult::InProgress;
 }

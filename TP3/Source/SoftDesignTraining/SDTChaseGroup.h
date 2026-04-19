@@ -99,4 +99,6 @@ private:
 
     // Optimise l'assignation agent→position pour minimiser la distance totale
     void OptimizePositionAssignment();
+
+    FVector m_LastRequestedMoveTarget = FVector::ZeroVector;
 };

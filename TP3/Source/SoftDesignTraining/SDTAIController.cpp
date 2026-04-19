@@ -93,7 +93,6 @@ void ASDTAIController::MoveToEncirclementPosition()
         return;
     }
 
-    // Récupère la position d'encerclement assignée à cet agent
     FVector TargetPos = Group->GetEncirclementPositionFor(this);
 
     MoveToLocation(TargetPos, 0.5f, false, true, true, false, NULL, false);
@@ -393,6 +392,7 @@ void ASDTAIController::UpdatePlayerInteractionBehavior(const FHitResult& detecti
         AIStateInterrupted();
 		UpdateGroupMembership(); // met à jour l'appartenance au groupe à chaque transition																					 
     }
+
 }
 
 ASDTChaseGroup* ASDTAIController::GetOrCreateChaseGroup()
