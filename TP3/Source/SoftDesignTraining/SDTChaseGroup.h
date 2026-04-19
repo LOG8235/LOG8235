@@ -92,7 +92,7 @@ private:
 
     // Rayon autour du joueur pour les positions d'encerclement (en cm)
     UPROPERTY(EditAnywhere, Category = "Chase Group")
-    float EncirclementRadius = 300.f;
+    float EncirclementRadius = 500.f;
 
     // Dessine les indicateurs de debug au-dessus des membres
     void DrawGroupDebug();

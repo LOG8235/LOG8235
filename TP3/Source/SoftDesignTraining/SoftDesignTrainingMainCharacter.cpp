@@ -5,6 +5,7 @@
 
 #include "Camera/CameraComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "SDTChaseGroup.h"
 
 ASoftDesignTrainingMainCharacter::ASoftDesignTrainingMainCharacter()
 {
@@ -30,8 +31,12 @@ void ASoftDesignTrainingMainCharacter::OnBeginOverlap(UPrimitiveComponent* Overl
 
     if (ASoftDesignTrainingCharacter* character = Cast<ASoftDesignTrainingCharacter>(OtherActor))
     {
-        if (!IsPoweredUp())
+        if (!IsPoweredUp()) {
             SetActorLocation(m_StartingPosition);
+            ASDTChaseGroup* ChaseGroup = ASDTChaseGroup::GetInstance(GetWorld());
+            ChaseGroup->DissolveGroup();
+        }
+       
     }
 }
 
@@ -51,4 +56,8 @@ void ASoftDesignTrainingMainCharacter::OnPowerUpDone()
     GetMesh()->SetMaterial(0, nullptr);
 
     GetWorld()->GetTimerManager().ClearTimer(m_PowerUpTimer);
+
+    ASDTChaseGroup* ChaseGroup = ASDTChaseGroup::GetInstance(GetWorld());
+    ChaseGroup->DissolveGroup();
+    UE_LOG(LogTemp, Log, TEXT("DISSOLVED TA MERE"));
 }

@@ -94,7 +94,7 @@ void ASDTAIController::MoveToEncirclementPosition()
     float DistanceToPlayer = FVector::Dist(SelfPawn->GetActorLocation(), PlayerCharacter->GetActorLocation());
 
     // Si pas encore de LKP valide ou groupe d'un seul membre : poursuite directe
-    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1 || DistanceToPlayer <= 300)
+    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1 || DistanceToPlayer <= 550)
     {
         MoveToPlayer();
         return;
@@ -152,7 +152,7 @@ void ASDTAIController::OnPlayerInteractionNoLosDone()
     if (!AtJumpSegment)
     {
         AIStateInterrupted();
-        m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
+        //m_PlayerInteractionBehavior = PlayerInteractionBehavior_Collect;
         UpdateGroupMembership();
     }
 }
@@ -356,11 +356,15 @@ ASDTAIController::PlayerInteractionBehavior ASDTAIController::GetCurrentPlayerIn
         if (!HasLoSOnHit(hit))
             return PlayerInteractionBehavior_Collect;
 
+        UE_LOG(LogTemp, Log, TEXT("GET CURRENT IF BEEF"));
+
         return SDTUtils::IsPlayerPoweredUp(GetWorld()) ? PlayerInteractionBehavior_Flee : PlayerInteractionBehavior_Chase;
     }
     else
     {
         PlayerInteractionLoSUpdate();
+
+        UE_LOG(LogTemp, Log, TEXT("GET CURRENT ELSE BEEF"));
 
         return SDTUtils::IsPlayerPoweredUp(GetWorld()) ? PlayerInteractionBehavior_Flee : PlayerInteractionBehavior_Chase;
     }
@@ -411,13 +415,7 @@ void ASDTAIController::UpdateGroupMembership()
 
     if (m_PlayerInteractionBehavior == PlayerInteractionBehavior_Chase)
     {
-        // Rejoint le groupe si pas déjà membre
         Group->AddMember(this);
-    }
-    else
-    {
-        // Quitte le groupe si l'agent n'est plus en poursuite
-        Group->RemoveMember(this);
     }
 }
 
