@@ -174,6 +174,45 @@ FVector ASDTChaseGroup::GetEncirclementPositionFor(ASDTAIController* Controller)
     return LastKnownPlayerPosition;
 }
 
+FVector ASDTChaseGroup::GetCloseEncirclementPositionFor(ASDTAIController* Controller) const
+{
+    FVector PlayerLoc = LastKnownPlayerPosition;
+    FVector PlayerForward = GetActorForwardVector();
+
+    int32 MemberIndex = Members.Find(Controller);
+    if (MemberIndex == INDEX_NONE) return PlayerLoc;
+
+    const int32 Count = Members.Num();
+
+    float ArcAngle = FMath::DegreesToRadians(180.f);
+
+    float RelativeAngle;
+    if (Count > 1)
+    {
+        RelativeAngle = (ArcAngle * MemberIndex / (Count - 1)) - (ArcAngle / 2.0f);
+    }
+    else
+    {
+        RelativeAngle = 0.f;
+    }
+
+    FVector BlockingDirection = PlayerForward;
+
+    FVector PosOffset = BlockingDirection.RotateAngleAxis(FMath::RadiansToDegrees(RelativeAngle), FVector::UpVector);
+
+    float CloseRadius = 150.f;
+    FVector IdealPos = PlayerLoc + (PosOffset * CloseRadius);
+
+    UNavigationSystemV1* NavSys = UNavigationSystemV1::GetCurrent(GetWorld());
+    FNavLocation NavPos;
+    if (NavSys && NavSys->ProjectPointToNavigation(IdealPos, NavPos, FVector(200.f, 200.f, 200.f)))
+    {
+        return NavPos.Location;
+    }
+
+    return PlayerLoc;
+}
+
 void ASDTChaseGroup::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);

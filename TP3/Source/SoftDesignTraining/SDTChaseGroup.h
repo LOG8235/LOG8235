@@ -37,6 +37,7 @@ public:
 
     FVector GetEncirclementPositionFor(ASDTAIController* Controller) const;
 
+    FVector GetCloseEncirclementPositionFor(ASDTAIController* Controller) const;
 
     virtual void Tick(float DeltaTime) override;
     bool HasLkPTimeout() const { return LKPTimeout <= 0.f; };

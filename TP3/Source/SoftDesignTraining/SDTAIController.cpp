@@ -93,13 +93,20 @@ void ASDTAIController::MoveToEncirclementPosition()
 
     float DistanceToPlayer = FVector::Dist(SelfPawn->GetActorLocation(), PlayerCharacter->GetActorLocation());
 
-    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1 || DistanceToPlayer <= 550)
+    if (!Group || !Group->HasValidLKP() || Group->GetMemberCount() <= 1 || DistanceToPlayer <= 150)
     {
         MoveToPlayer();
         return;
     }
 
     FVector TargetPos = Group->GetEncirclementPositionFor(this);
+    TargetPos = Group->GetEncirclementPositionFor(this);
+
+
+    if (DistanceToPlayer <= 550)
+    {
+        TargetPos = Group->GetCloseEncirclementPositionFor(this);
+	}
 
     MoveToLocation(TargetPos, 0.5f, false, true, true, false, NULL, false);
     OnMoveToTarget();
